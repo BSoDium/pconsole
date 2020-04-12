@@ -6,7 +6,7 @@ with open('README.md') as d:
 
 setup(name = 'pconsole',
       author = 'l3alr0g',
-      version = '0.1',
+      version = '0.1.1',
       url = 'https://github.com/l3alr0g/pconsole',
       license = 'None',
       packages = ['pconsole'],
