@@ -4,6 +4,12 @@
 ### Installation
 
 ```
+pip install pconsole
+```
+
+or, alternatively
+
+```
 cd pckg dir
 pip install -e .
 ```
