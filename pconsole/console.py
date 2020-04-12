@@ -16,10 +16,10 @@ MAINDIR = Filename.from_os_specific(str(pathlib.Path(temp).resolve())).getFullpa
 
 class Console:
     def __init__(self):
+        base.a2dBottomLeft.set_bin('gui-popup', 0) # prevent overlapping issues
         return None
         
     def create(self, CommandDictionary, event:str = "f1"):
-        base.a2dBottomLeft.set_bin('background', 123) # avoid drawing order conflict
         self.CommandDictionary = {**CommandDictionary,**{"usage":self.helper,"help":self.showCommands}} # copy for further use in other methods
         self.hidden = False
         self.textscale = 0.04
@@ -69,6 +69,7 @@ class Console:
                 i.show()
             self.entry.show()
             self.background.show()
+            
         else:
             for i in self.SavedLines:
                 i.hide()
