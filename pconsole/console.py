@@ -3,11 +3,15 @@ try:
     from direct.gui.DirectGui import *
     from direct.gui.OnscreenText import OnscreenText
     from panda3d.core import *
+    import importlib
+    import pathlib
 except ModuleNotFoundError:
     print('[Panda3d console]: Failed to import panda3d module')
 import sys,os
 
-MAINDIR = Filename.from_os_specific(os.path.abspath(sys.path[0])).getFullpath()
+
+temp = os.path.dirname(__file__)
+MAINDIR = Filename.from_os_specific(str(pathlib.Path(temp).resolve())).getFullpath()
 
 
 class Console:
@@ -20,8 +24,8 @@ class Console:
         self.hidden = False
         self.textscale = 0.04
         self.Lines = 47
-        self.font = loader.loadFont(MAINDIR + '/assets/fonts/terminus-ttf-4.47.0/TerminusTTF-4.47.0.ttf')
-        self.background = OnscreenImage(image = str(MAINDIR)+"/assets/images/bg.png",pos = (0.65,0,1), parent = base.a2dBottomLeft)
+        self.font = loader.loadFont(MAINDIR + '/TerminusTTF-4.47.0.ttf')
+        self.background = OnscreenImage(image =MAINDIR + "/bg.png",pos = (0.65,0,1), parent = base.a2dBottomLeft)
         self.background.setTransparency(TransparencyAttrib.MAlpha)
         self.SavedLines = [OnscreenText(text = '', 
                                             pos = (0.01, 0.1 + x*self.textscale), 

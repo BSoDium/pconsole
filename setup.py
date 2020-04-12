@@ -12,5 +12,6 @@ setup(name = 'pconsole',
       packages = ['pconsole'],
       zip_safe = False,
       description = 'Console for panda3d application written in python',
-      long_description = desc
+      long_description = desc,
+      include_package_data=True
 )
