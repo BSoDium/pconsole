@@ -10,8 +10,8 @@ MAINDIR = Filename.from_os_specific(os.path.abspath(sys.path[0])).getFullpath()
 class testApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
-        self.mire = OnscreenImage(image = MAINDIR+ '/test.jpg')
-        self.mire.setScale(1.3, 1, 1)
+        self.wp = OnscreenImage(image = MAINDIR+ '/test.png')
+        self.wp.setScale(1.778, 1, 1)
         commandDic = {
             "test":testfunc
         }

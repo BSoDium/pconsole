@@ -1,11 +1,12 @@
 from setuptools import setup
+from pconsole.version import __version__ as v  
 
 with open('README.md') as d:
     desc = d.read()
 
 setup(name = 'pconsole',
       author = 'l3alr0g',
-      version = '0.2.0',
+      version = v,
       url = 'https://github.com/l3alr0g/pconsole',
       license = 'None',
       packages = ['pconsole'],

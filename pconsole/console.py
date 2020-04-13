@@ -16,8 +16,8 @@ import importlib
 import pathlib
 
 temp = os.path.dirname(__file__)
-MAINDIR = Filename.from_os_specific(str(pathlib.Path(temp).resolve())).getFullpath()
-
+PYMAINDIR = str(pathlib.Path(temp).resolve())
+MAINDIR = Filename.from_os_specific(PYMAINDIR).getFullpath()
 
 class Console:
     def __init__(self):
@@ -292,7 +292,9 @@ class Console:
         self.ConsoleOutput("Download the panda3d engine at panda3d.org")
 
     def showLicense(self):
-        pass
+        with open(PYMAINDIR + '\license.txt') as l:
+            license = l.read()
+        self.ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
 
     def callBack(self, key : bool):
         invertedInput = self.InputLines[::-1]
