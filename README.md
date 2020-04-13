@@ -3,20 +3,20 @@
 
 ### Installation
 
-```
+```bash
 pip install pconsole
 ```
 
 or, alternatively
 
-```
+```bash
 cd pckg dir
 pip install -e .
 ```
 
 ### Initialize console
 
-```
+```python
 import pconsole
 commandDic = {"f1_string":f1,
               "f2_string":f2

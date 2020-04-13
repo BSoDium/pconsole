@@ -7,6 +7,7 @@ pconsole/TerminusTTF-4.47.0.ttf
 pconsole/__init__.py
 pconsole/bg.png
 pconsole/console.py
+pconsole/file.py
 pconsole.egg-info/PKG-INFO
 pconsole.egg-info/SOURCES.txt
 pconsole.egg-info/dependency_links.txt

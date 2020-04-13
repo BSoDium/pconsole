@@ -1,14 +1,18 @@
+# -*- coding: utf-8 -*-
+
 try:
     from direct.gui.OnscreenImage import OnscreenImage
     from direct.gui.DirectGui import *
     from direct.gui.OnscreenText import OnscreenText
     from panda3d.core import *
-    import importlib
-    import pathlib
+    import panda3d
 except ModuleNotFoundError:
     print('[Panda3d console]: Failed to import panda3d module')
-import sys,os
-
+import sys,os, __main__, traceback
+from .file import BufferFile
+from code import InteractiveInterpreter
+import importlib
+import pathlib
 
 temp = os.path.dirname(__file__)
 MAINDIR = Filename.from_os_specific(str(pathlib.Path(temp).resolve())).getFullpath()
@@ -17,6 +21,8 @@ MAINDIR = Filename.from_os_specific(str(pathlib.Path(temp).resolve())).getFullpa
 class Console:
     def __init__(self):
         base.a2dBottomLeft.set_bin('gui-popup', 0) # prevent overlapping issues
+        sys.stdout = BufferFile(self.ConsoleOutput)
+        sys.stderr = BufferFile(self.CMDError)
         return None
         
     def create(self, CommandDictionary, event:str = "f1"):
@@ -83,6 +89,8 @@ class Console:
         return None
     
     def ConvertToFunction(self,data):
+
+        if len(data) == 0: return None 
         # callback stuff
         self.callBackIndex = -1
         self.InputLines.append(data)
@@ -93,6 +101,17 @@ class Console:
         self.ConsoleOutput(" ")
         self.ConsoleOutput(str(MAINDIR)+"> "+data)
 
+        # cmd debugger check
+        temp = data.strip()
+        if temp[0] == '$':
+            data = temp[1:].strip()
+            try:
+                exec(data)
+            except:
+                self.CMDError(traceback.format_exc())
+            return None
+
+        # common command
         Buffer = []
         ind = data.find('(')
         if ind <= 0: # no occurence
@@ -184,33 +203,36 @@ class Console:
         return None
         
 
-    def SError(self,report):
-        self.ConsoleOutput("Traceback (most recent call last):", (1,0,0,1))
-        self.ConsoleOutput("Incorrect use of the '"+str(report)+"' command", (1,0,0,1))
+    def CMDError(self,report):
+        sys.__stderr__.write(report)
+        self.ConsoleOutput(report, (1,0,0,1))
         return None
     
     def CommandError(self,report):
         self.ConsoleOutput("Traceback (most recent call last):", (1,0,0,1))
         self.ConsoleOutput("SyntaxError: command '"+str(report)+"' is not defined", (1,0,0,1))
     
-    def ConsoleOutput(self,output, color:Vec4 = Vec4(1,1,1,1), mode:str = 'add'):
+    def ConsoleOutput(self,output, color:Vec4 = Vec4(1,1,1,1), mode:str = 'add', CMD_type = False):
+        if CMD_type: sys.__stdout__.write(output)
         #maxsize = self.entry['width']
-        
         maxsize = 81
         #maxsize = 66 # hermit font
-        discretized = [output[i:i+maxsize] for i in range(0,len(output),maxsize)]
+        text = output.split('\n')
+        text = [[x[i:i+maxsize] for i in range(0,len(x),maxsize)] for x in text]
         if mode == 'add':
-            for i in discretized: # for each line
-                for x in range(self.Lines-1,0,-1):
-                    self.SavedLines[x].text = self.SavedLines[x-1].text
-                    self.SavedLines[x].fg = self.SavedLines[x-1].fg
-                self.SavedLines[0].text = i
-                self.SavedLines[0].fg = color
+            for discretized in text:
+                for i in discretized: # for each line
+                    for x in range(self.Lines-1,0,-1):
+                        self.SavedLines[x].text = self.SavedLines[x-1].text
+                        self.SavedLines[x].fg = self.SavedLines[x-1].fg
+                    self.SavedLines[0].text = i
+                    self.SavedLines[0].fg = color
         elif mode == 'edit':
-            n = len(discretized)
-            for i in range(n):
-                self.SavedLines[i].text = discretized[n - i - 1]
-                self.SavedLines[i].fg = color
+            for discretized in text:
+                n = len(discretized)
+                for i in range(n):
+                    self.SavedLines[i].text = discretized[n - i - 1]
+                    self.SavedLines[i].fg = color
         return None
     
     def helper(self,index):
