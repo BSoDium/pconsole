@@ -8,6 +8,7 @@ pconsole/__init__.py
 pconsole/bg.png
 pconsole/console.py
 pconsole/file.py
+pconsole/version.py
 pconsole.egg-info/PKG-INFO
 pconsole.egg-info/SOURCES.txt
 pconsole.egg-info/dependency_links.txt

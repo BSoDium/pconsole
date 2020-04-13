@@ -9,6 +9,7 @@ try:
 except ModuleNotFoundError:
     print('[Panda3d console]: Failed to import panda3d module')
 import sys,os, __main__, traceback
+from .version import __version__ as version
 from .file import BufferFile
 from code import InteractiveInterpreter
 import importlib
@@ -25,13 +26,17 @@ class Console:
         sys.stderr = BufferFile(self.CMDError)
         return None
         
-    def create(self, CommandDictionary, event:str = "f1"):
-        self.CommandDictionary = {**CommandDictionary,**{"usage":self.helper,"help":self.showCommands}} # copy for further use in other methods
+    def create(self, CommandDictionary, event:str = "f1", app = None):
+        defaults = {"usage":self.usage,
+                    "help":self.help,
+                    "credits":self.credits,
+                    "license":self.showLicense}
+        self.CommandDictionary = {**CommandDictionary,**defaults} # copy for further use in other methods
         self.hidden = False
         self.textscale = 0.04
         self.Lines = 47
         self.font = loader.loadFont(MAINDIR + '/TerminusTTF-4.47.0.ttf')
-        self.background = OnscreenImage(image =MAINDIR + "/bg.png",pos = (0.65,0,1), parent = base.a2dBottomLeft)
+        self.background = OnscreenImage(image =MAINDIR + "/bg.png", pos = (0.65,0,1), parent = base.a2dBottomLeft, color = (1,1,1,0.95))
         self.background.setTransparency(TransparencyAttrib.MAlpha)
         self.SavedLines = [OnscreenText(text = '', 
                                             pos = (0.01, 0.1 + x*self.textscale), 
@@ -40,6 +45,7 @@ class Console:
                                             fg = (1,1,1,1), 
                                             parent = base.a2dBottomLeft,
                                             font= self.font) for x in range(self.Lines)]
+        self.arrow = OnscreenText(text = '>>> ',scale = self.textscale, font = self.font, pos = (0.04, 0.03), fg = (1,1,1,1), parent = base.a2dBottomLeft)
         self.loadConsoleEntry()
         self.commands = self.CommandDictionary
         self.callBackIndex = -1
@@ -49,22 +55,26 @@ class Console:
         base.accept('arrow_up',self.callBack,[True])
         base.accept('arrow_down',self.callBack,[False])
 
-        self.ConsoleOutput('- Panda3d runtime console by Balrog -',color = Vec4(0,0,1,1))
-        self.ConsoleOutput('successfully loaded all components',color = Vec4(0,1,0,1))
+        self.ConsoleOutput('Pconsole ' + version,color = Vec4(0,0,1,1))
+        self.ConsoleOutput('Successfully loaded all components',color = Vec4(0,1,0,1))
+        self.ConsoleOutput('Type "help", "credits" or "license" for more information.')
+        self.app = app
+        if self.app == None: 
+            self.ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
         self.toggle() # initialize as hidden
         return None
     
     def loadConsoleEntry(self): #-1.76, 0, -0.97
         self.entry = DirectEntry(scale=self.textscale,
-                                    frameColor=(0,0,0,1),
+                                    frameColor = (0.05,0.05,0.05,0),
                                     text_fg = (1,1,1,1),
-                                    pos = (0.015, 0, 0.03),
+                                    pos = (0.1, 0, 0.03),
                                     overflow = 1,
                                     command=self.ConvertToFunction,
                                     initialText="",
                                     numLines = 1,
                                     focus=True,
-                                    width = 40,
+                                    width = 38,
                                     parent = base.a2dBottomLeft,
                                     entryFont = self.font)
         return None
@@ -75,12 +85,14 @@ class Console:
                 i.show()
             self.entry.show()
             self.background.show()
+            self.arrow.show()
             
         else:
             for i in self.SavedLines:
                 i.hide()
             self.entry.hide()
             self.background.hide()
+            self.arrow.hide()
         self.hidden = not(self.hidden)
         return None
     
@@ -104,10 +116,11 @@ class Console:
         # cmd debugger check
         temp = data.strip()
         if temp[0] == '$':
+            main = self.app
             data = temp[1:].strip()
             try:
                 exec(data)
-            except:
+            except Exception:
                 self.CMDError(traceback.format_exc())
             return None
 
@@ -235,7 +248,7 @@ class Console:
                     self.SavedLines[i].fg = color
         return None
     
-    def helper(self,index):
+    def usage(self,index):
         '''
         Provides help concerning a given command
         '''
@@ -252,17 +265,17 @@ class Console:
             self.ConsoleOutput("- Known arguments: ")
             
             arg = list(i.__code__.co_varnames)
-            del arg[0] # remove the self argument
+            #del arg[0] # remove the self argument
             arg = str(arg)
             if len(arg)-2:
                 self.ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
             else:
                 self.ConsoleOutput("No arguments required")
-        except KeyError:
+        except KeyError: # not in the dictionary
             self.ConsoleOutput("Unknown command '%s'" % str(index), (1,0,0,1))
         return None
     
-    def showCommands(self):
+    def help(self):
         '''
         Shows a list of available commands
         '''
@@ -272,6 +285,14 @@ class Console:
         self.ConsoleOutput(" ")
         self.ConsoleOutput("Use usage(command) for more details on a specific command")
         return None
+
+    def credits(self):
+        self.ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project")
+        self.ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information")
+        self.ConsoleOutput("Download the panda3d engine at panda3d.org")
+
+    def showLicense(self):
+        pass
 
     def callBack(self, key : bool):
         invertedInput = self.InputLines[::-1]

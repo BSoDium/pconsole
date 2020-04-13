@@ -13,14 +13,17 @@ class testApp(ShowBase):
         self.mire = OnscreenImage(image = MAINDIR+ '/test.jpg')
         self.mire.setScale(1.3, 1, 1)
         commandDic = {
-            "test":self.__init__
+            "test":testfunc
         }
         self.commandline = Console()
-        self.commandline.create(commandDic)
+        self.commandline.create(commandDic, app = self)
         self.task_mgr.add(self.update, "updatingTask")
     
     def update(self, task):
         return task.cont
-    
-a = testApp()
-a.run()
+
+def testfunc():
+    pass
+
+App = testApp()
+App.run()
