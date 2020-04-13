@@ -1,5 +1,5 @@
 # panda3d console
- a tiny and easy to use runtime console for panda3d-powered apps
+ a tiny and easy-to-use runtime console for panda3d-powered apps
 
 ### Installation
 
@@ -18,8 +18,8 @@ pip install -e .
 
 ```
 import pconsole
-commandDic = {"command_string":associatedfunction,
-"another_one":associatedfunction
+commandDic = {"f1_string":f1,
+              "f2_string":f2
 }
 myConsole = pconsole.Console()
 myConsole.create(commandDic)
