@@ -11,6 +11,7 @@ except ModuleNotFoundError:
 import sys,os, __main__, traceback, importlib, pathlib
 from .version import __version__ as version
 from .file import BufferFile
+from .defaults import __blacklist__ # change to module names when defined
 from code import InteractiveInterpreter
 
 temp = os.path.dirname(__file__)
@@ -30,11 +31,11 @@ class Console:
                     "credits":self.credits,
                     "license":self.showLicense}
         self.CommandDictionary = {**CommandDictionary,**defaults} # copy for further use in other methods
-        self.consoles = [
-            "csl> ",
-            " py> ",
-            "cmd> "
-        ]
+        self.consoles = {
+            "csl> ":"Pconsole "+version,
+            "pyt> ":sys.version[:5]+" runtime python console",
+            "cmd> ":"Microsoft windows commandline"
+        }
         self.hidden = False
         self.textscale = 0.04
         self.Lines = 47
@@ -42,13 +43,29 @@ class Console:
         self.background = OnscreenImage(image =MAINDIR + "/bg.png", pos = (0.65,0,1), parent = base.a2dBottomLeft, color = (1,1,1,0.95))
         self.background.setTransparency(TransparencyAttrib.MAlpha)
         self.SavedLines = [OnscreenText(text = '', 
-                                            pos = (0.01, 0.1 + x*self.textscale), 
+                                            pos = (0.01, 0.12 + x*self.textscale), 
                                             scale = self.textscale, 
                                             align = TextNode.ALeft, 
                                             fg = (1,1,1,1), 
                                             parent = base.a2dBottomLeft,
                                             font= self.font) for x in range(self.Lines)]
-        self.indicator = DirectButton(text = 'csl> ', command = self.switch_adr, scale = self.textscale, frameColor = (0,0,0,0), text_font = self.font, pressEffect = False, pos = (0.01, 0, 0.031), text_fg = (1,1,1,1), text_align = TextNode.ALeft, parent = base.a2dBottomLeft)
+        self.indicator = DirectButton(text = 'csl> ', 
+                                      command = self.switch_adr, 
+                                      scale = self.textscale, 
+                                      pos = (0.01, 0, 0.051), 
+                                      frameColor = (0,0,0,0), 
+                                      text_font = self.font, 
+                                      pressEffect = False, 
+                                      text_fg = (1,1,1,1), 
+                                      text_align = TextNode.ALeft, 
+                                      parent = base.a2dBottomLeft)
+        self.info = OnscreenText(text = 'target: 3.8.3 runtime python console ', 
+                                pos = (0.01, 0.01), 
+                                scale = self.textscale*0.95, 
+                                align = TextNode.ALeft, 
+                                fg = (0.7,0.9,0.9,1), 
+                                parent = base.a2dBottomLeft,
+                                font= self.font)
         self.loadConsoleEntry()
         self.commands = self.CommandDictionary
         self.callBackIndex = -1
@@ -58,9 +75,10 @@ class Console:
         base.accept('arrow_up',self.callBack,[True])
         base.accept('arrow_down',self.callBack,[False])
 
-        self.ConsoleOutput('Pconsole ' + version,color = Vec4(0,0,1,1))
+        self.ConsoleOutput('Pconsole ' + version,color = Vec4(0.1,0.1,1,1))
         self.ConsoleOutput('Successfully loaded all components',color = Vec4(0,1,0,1))
         self.ConsoleOutput('Type "help", "credits" or "license" for more information.')
+        self.ConsoleOutput("Click the prompt keyword to change the targeted console")
         self.app = app
         if self.app == None: 
             self.ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
@@ -71,7 +89,7 @@ class Console:
         self.entry = DirectEntry(scale=self.textscale,
                                     frameColor = (0.05,0.05,0.05,0),
                                     text_fg = (1,1,1,1),
-                                    pos = (0.1, 0, 0.03),
+                                    pos = (0.1, 0, 0.05),
                                     overflow = 1,
                                     command=self.ConvertToFunction,
                                     initialText="",
@@ -89,6 +107,7 @@ class Console:
             self.entry.show()
             self.background.show()
             self.indicator.show()
+            self.info.show()
             
         else:
             for i in self.SavedLines:
@@ -96,6 +115,7 @@ class Console:
             self.entry.hide()
             self.background.hide()
             self.indicator.hide()
+            self.info.hide()
         self.hidden = not(self.hidden)
         return None
     
@@ -117,8 +137,16 @@ class Console:
         self.ConsoleOutput(str(MAINDIR)+"> "+data)
 
         # cmd debugger check
-        if self.indicator['text'] == ' py> ':
+        if self.indicator['text'] == 'pyt> ':
             main = self.app
+            data = data.strip()
+            forb = list(__blacklist__.keys())
+            for a in forb:
+                k = len(a)
+                if data[:k] == a:
+                    self.CMDError('Sorry, this command has been disabled internally\nReason:')
+                    self.CMDError(__blacklist__[a])
+                    return None
             try:
                 exec(data.strip())
             except Exception:
@@ -259,12 +287,36 @@ class Console:
     
     def switch_adr(self):
         current = self.indicator['text']
-        n = self.consoles.index(current)
-        if n == len(self.consoles)-1:
+        n = list(self.consoles.keys()).index(current)
+        if n == len(self.consoles.keys())-1:
             n = 0
         else:
             n+=1
-        self.indicator['text'] = self.consoles[n]
+        self.indicator['text'] = list(self.consoles.keys())[n]
+        self.info.text = "target: " + self.consoles[self.indicator['text']]
+    
+    def callBack(self, key : bool):
+        invertedInput = self.InputLines[::-1]
+        if key: # up key pressed
+            try: # avoid out of range errors
+                if self.callBackIndex < len(invertedInput):
+                    self.callBackIndex += 1
+                    self.entry.enterText(invertedInput[self.callBackIndex])
+            except: pass
+        else:
+            try:
+                if self.callBackIndex >= 0:
+                    self.callBackIndex -= 1
+                    self.entry.enterText(([''] + invertedInput)[self.callBackIndex])
+            except: pass
+        
+    def TextToLine(self,text):
+        try:
+            text = text.replace("\n","")
+        except:
+            pass
+        return text
+
     def usage(self,index):
         '''
         Provides help concerning a given command
@@ -312,28 +364,6 @@ class Console:
         with open(PYMAINDIR + '\license.txt') as l:
             license = l.read()
         self.ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
-
-    def callBack(self, key : bool):
-        invertedInput = self.InputLines[::-1]
-        if key: # up key pressed
-            try: # avoid out of range errors
-                if self.callBackIndex < len(invertedInput):
-                    self.callBackIndex += 1
-                    self.entry.enterText(invertedInput[self.callBackIndex])
-            except: pass
-        else:
-            try:
-                if self.callBackIndex >= 0:
-                    self.callBackIndex -= 1
-                    self.entry.enterText(([''] + invertedInput)[self.callBackIndex])
-            except: pass
-        
-    def TextToLine(self,text):
-        try:
-            text = text.replace("\n","")
-        except:
-            pass
-        return text
 
 def find_all(sample, string):
     n = len(sample)
