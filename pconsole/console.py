@@ -8,12 +8,10 @@ try:
     import panda3d
 except ModuleNotFoundError:
     print('[Panda3d console]: Failed to import panda3d module')
-import sys,os, __main__, traceback
+import sys,os, __main__, traceback, importlib, pathlib
 from .version import __version__ as version
 from .file import BufferFile
 from code import InteractiveInterpreter
-import importlib
-import pathlib
 
 temp = os.path.dirname(__file__)
 PYMAINDIR = str(pathlib.Path(temp).resolve())
@@ -32,6 +30,11 @@ class Console:
                     "credits":self.credits,
                     "license":self.showLicense}
         self.CommandDictionary = {**CommandDictionary,**defaults} # copy for further use in other methods
+        self.consoles = [
+            "csl> ",
+            " py> ",
+            "cmd> "
+        ]
         self.hidden = False
         self.textscale = 0.04
         self.Lines = 47
@@ -45,7 +48,7 @@ class Console:
                                             fg = (1,1,1,1), 
                                             parent = base.a2dBottomLeft,
                                             font= self.font) for x in range(self.Lines)]
-        self.arrow = OnscreenText(text = '>>> ',scale = self.textscale, font = self.font, pos = (0.04, 0.03), fg = (1,1,1,1), parent = base.a2dBottomLeft)
+        self.indicator = DirectButton(text = 'csl> ', command = self.switch_adr, scale = self.textscale, frameColor = (0,0,0,0), text_font = self.font, pressEffect = False, pos = (0.01, 0, 0.031), text_fg = (1,1,1,1), text_align = TextNode.ALeft, parent = base.a2dBottomLeft)
         self.loadConsoleEntry()
         self.commands = self.CommandDictionary
         self.callBackIndex = -1
@@ -85,14 +88,14 @@ class Console:
                 i.show()
             self.entry.show()
             self.background.show()
-            self.arrow.show()
+            self.indicator.show()
             
         else:
             for i in self.SavedLines:
                 i.hide()
             self.entry.hide()
             self.background.hide()
-            self.arrow.hide()
+            self.indicator.hide()
         self.hidden = not(self.hidden)
         return None
     
@@ -114,105 +117,111 @@ class Console:
         self.ConsoleOutput(str(MAINDIR)+"> "+data)
 
         # cmd debugger check
-        temp = data.strip()
-        if temp[0] == '$':
+        if self.indicator['text'] == ' py> ':
             main = self.app
-            data = temp[1:].strip()
             try:
-                exec(data)
+                exec(data.strip())
             except Exception:
                 self.CMDError(traceback.format_exc())
             return None
-
         # common command
-        Buffer = []
-        ind = data.find('(')
-        if ind <= 0: # no occurence
-            Buffer.append(data)
-        else:
-            Buffer.append(data[0:ind]) # indentify keyword
-            data = data[ind:len(data)] # strip the string as we move along
-            if not(data[0] == '(' and data[len(data)-1] == ')'): # closing parenthesis syntax stuff
-                self.ConsoleOutput('Missing parenthesis ")" in "'+ Buffer[0] + data + '"', (1,0,0,1))
-                return None
-            else:pass
-
-            data = data[1:len(data)-1] # cut these useless '()' out
-
-            left = find_all('(', data)
-            right = find_all(')', data)
-            if len(left) != len(right): # unmatched parethesis error
-                self.ConsoleOutput('SyntaxError: unmatched parenthesis found in expression', (1,0,0,1))
-                return None
-            # we need to split the list according to the parenthesis structure 
-            
-            nl = len(left)
-            for i in range(nl):
-                temp = data[left[i]:right[i]+1].replace(',', '|') 
-                temp = ' '+temp[1:len(temp)-1]+' ' # the spaces compensate the index gap
-                data = data[:left[i]] + temp + data[right[i]+1:]
-
-            Buffer += data.split(',') # identify arguments
-            for i in range(len(Buffer)):
-                Buffer[i] = Buffer[i].strip()
-                if '|' in Buffer[i]:
-                    Buffer[i] = Buffer[i].split('|') # internal tuples
-                    for j in range(len(Buffer[i])):
-                        Buffer[i][j] = Buffer[i][j].strip()     
-            # now the string has been converted into a readable list
-
-            for j in range(1, len(Buffer)):
-                try:
-                    if str(int(Buffer[j])) == Buffer[j]:
-                        Buffer[j] = int(Buffer[j])
-                except:
-                    pass
-                try:
-                    if str(float(Buffer[j])) == Buffer[j]:
-                        Buffer[j] = float(Buffer[j])
-                except ValueError:
-                    if str(Buffer[j]) != 'None':
-                        Buffer[j] = str(Buffer[j])
-                    else:
-                        Buffer[j] = None
-                except TypeError:
-                    if type(Buffer[j]) is list:
-                        for t in range(len(Buffer[j])): # a recursive algorithm might have been a better option
-                            try:
-                                if str(int(Buffer[j][t])) == Buffer[j][t]:
-                                    Buffer[j][t] = int(Buffer[j][t])
-                            except ValueError:
-                                pass
-                            try:
-                                if str(float(Buffer[j][t])) == Buffer[j][t]:
-                                    Buffer[j][t] = float(Buffer[j][t])
-                            except ValueError:
-                                if str(Buffer[j][t]) != 'None':
-                                    Buffer[j][t] = str(Buffer[j][t])
-                                else:
-                                    Buffer[j][t] = None
-                        Buffer[j] = tuple(Buffer[j])
-
-                # formating is done, let's head over to the execution
-        
-        try:
-            ChosenCommand = self.commands[Buffer[0]]
-            if len(Buffer)-1 and Buffer[1] != '': # several arguments have been provided
-                try:
-                    ChosenCommand(*Buffer[1:])
-                    return None
-                except TypeError:
-                    self.ConsoleOutput("Wrong arguments provided", (1,0,0,1))
-                    return None
+        elif self.indicator['text'] == 'csl> ':
+            ind = data.find('(')
+            Buffer = []
+            if ind <= 0: # no occurence
+                Buffer.append(data)
             else:
-                try:
-                    ChosenCommand()
+                Buffer.append(data[0:ind]) # indentify keyword
+                data = data[ind:len(data)] # strip the string as we move along
+                if not(data[0] == '(' and data[len(data)-1] == ')'): # closing parenthesis syntax stuff
+                    self.ConsoleOutput('Missing parenthesis ")" in "'+ Buffer[0] + data + '"', (1,0,0,1))
                     return None
-                except TypeError:
-                    self.ConsoleOutput('This command requires (at least) one argument', (1,0,0,1))
+                else:pass
+
+                data = data[1:len(data)-1] # cut these useless '()' out
+
+                left = find_all('(', data)
+                right = find_all(')', data)
+                if len(left) != len(right): # unmatched parethesis error
+                    self.ConsoleOutput('SyntaxError: unmatched parenthesis found in expression', (1,0,0,1))
                     return None
-        except:
-            self.CommandError(Buffer[0])
+                # we need to split the list according to the parenthesis structure 
+
+                nl = len(left)
+                for i in range(nl):
+                    temp = data[left[i]:right[i]+1].replace(',', '|') 
+                    temp = ' '+temp[1:len(temp)-1]+' ' # the spaces compensate the index gap
+                    data = data[:left[i]] + temp + data[right[i]+1:]
+
+                Buffer += data.split(',') # identify arguments
+                for i in range(len(Buffer)):
+                    Buffer[i] = Buffer[i].strip()
+                    if '|' in Buffer[i]:
+                        Buffer[i] = Buffer[i].split('|') # internal tuples
+                        for j in range(len(Buffer[i])):
+                            Buffer[i][j] = Buffer[i][j].strip()     
+                # now the string has been converted into a readable list
+
+                for j in range(1, len(Buffer)):
+                    try:
+                        if str(int(Buffer[j])) == Buffer[j]:
+                            Buffer[j] = int(Buffer[j])
+                    except:
+                        pass
+                    try:
+                        if str(float(Buffer[j])) == Buffer[j]:
+                            Buffer[j] = float(Buffer[j])
+                    except ValueError:
+                        if str(Buffer[j]) != 'None':
+                            Buffer[j] = str(Buffer[j])
+                        else:
+                            Buffer[j] = None
+                    except TypeError:
+                        if type(Buffer[j]) is list:
+                            for t in range(len(Buffer[j])): # a recursive algorithm might have been a better option
+                                try:
+                                    if str(int(Buffer[j][t])) == Buffer[j][t]:
+                                        Buffer[j][t] = int(Buffer[j][t])
+                                except ValueError:
+                                    pass
+                                try:
+                                    if str(float(Buffer[j][t])) == Buffer[j][t]:
+                                        Buffer[j][t] = float(Buffer[j][t])
+                                except ValueError:
+                                    if str(Buffer[j][t]) != 'None':
+                                        Buffer[j][t] = str(Buffer[j][t])
+                                    else:
+                                        Buffer[j][t] = None
+                            Buffer[j] = tuple(Buffer[j])
+
+                    # formating is done, let's head over to the execution
+        
+            try:
+                ChosenCommand = self.commands[Buffer[0]]
+                if len(Buffer)-1 and Buffer[1] != '': # several arguments have been provided
+                    try:
+                        ChosenCommand(*Buffer[1:])
+                        return None
+                    except TypeError:
+                        self.ConsoleOutput("Wrong arguments provided", (1,0,0,1))
+                        return None
+                else:
+                    try:
+                        ChosenCommand()
+                        return None
+                    except TypeError:
+                        self.ConsoleOutput('This command requires (at least) one argument', (1,0,0,1))
+                        return None
+            except:
+                self.CommandError(Buffer[0])
+        elif self.indicator['text'] == 'cmd> ':
+            '''
+            try:
+                self.CMDprocess = os.system(data.strip())
+            except:
+                self.CMDError(traceback.format_exc())
+            '''
+            self.CMDError('Sorry, this console has been temporarily disabled.')
         return None
         
 
@@ -248,6 +257,14 @@ class Console:
                     self.SavedLines[i].fg = color
         return None
     
+    def switch_adr(self):
+        current = self.indicator['text']
+        n = self.consoles.index(current)
+        if n == len(self.consoles)-1:
+            n = 0
+        else:
+            n+=1
+        self.indicator['text'] = self.consoles[n]
     def usage(self,index):
         '''
         Provides help concerning a given command

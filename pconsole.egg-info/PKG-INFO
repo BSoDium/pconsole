@@ -4,6 +4,7 @@ Version: 0.2.1
 Summary: Console for panda3d application written in python
 Home-page: https://github.com/l3alr0g/pconsole
 Author: l3alr0g
+Author-email: 'negreljerzy.philippe@gmail.com'
 License: None
 Description: # panda3d console
          a tiny and easy-to-use runtime console for panda3d-powered apps
