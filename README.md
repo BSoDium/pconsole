@@ -7,26 +7,30 @@
 pip install pconsole
 ```
 
-or, alternatively
-
-```bash
-cd pckg dir
-pip install -e .
-```
-
 ### Initialize console
 
 ```python
 import pconsole
-commandDic = {"f1_string":f1,
-              "f2_string":f2
+commandDic = {"func1_string":func1, # "associated string" : function name
+              "func2_string":func2
 }
+key = 't' # this key will toggle the console, by default, pconsole will use 'f1'
 myConsole = pconsole.Console()
-myConsole.create(commandDic)
+myConsole.create(commandDic, event = key)
 # command line is now up and running
 ```
 
 ### default commands
 
 - help: lists all available commands
+
 - usage: specific help
+
+### additional features
+
+use the 'app' argument when creating the console in order to be able to access attributes and variables from your main class in the python interpreter:
+
+```python
+myConsole.create(commandDic, event = key, app = self) # the self keyword will be refered to as 'main' in the interpreter
+```
+

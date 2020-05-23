@@ -1,4 +1,7 @@
-*.pyc
 /dist/
+*.pyc
 /*.egg-info
 /*.egg
+/*.code-workspace
+
+launch.json

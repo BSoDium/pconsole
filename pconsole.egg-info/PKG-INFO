@@ -1,11 +1,11 @@
 Metadata-Version: 2.1
 Name: pconsole
-Version: 0.2.1
+Version: 0.3.0
 Summary: Console for panda3d application written in python
 Home-page: https://github.com/l3alr0g/pconsole
 Author: l3alr0g
-Author-email: 'negreljerzy.philippe@gmail.com'
-License: None
+Author-email: negreljerzy.philippe@gmail.com
+License: MIT
 Description: # panda3d console
          a tiny and easy-to-use runtime console for panda3d-powered apps
         
@@ -15,29 +15,34 @@ Description: # panda3d console
         pip install pconsole
         ```
         
-        or, alternatively
-        
-        ```bash
-        cd pckg dir
-        pip install -e .
-        ```
-        
         ### Initialize console
         
         ```python
         import pconsole
-        commandDic = {"f1_string":f1,
-                      "f2_string":f2
+        commandDic = {"func1_string":func1, # "associated string" : function name
+                      "func2_string":func2
         }
+        key = 't' # this key will toggle the console, by default, pconsole will use 'f1'
         myConsole = pconsole.Console()
-        myConsole.create(commandDic)
+        myConsole.create(commandDic, event = key)
         # command line is now up and running
         ```
         
         ### default commands
         
         - help: lists all available commands
+        
         - usage: specific help
         
-Platform: UNKNOWN
+        ### additional features
+        
+        use the 'app' argument when creating the console in order to be able to access attributes and variables from your main class in the python interpreter:
+        
+        ```python
+        myConsole.create(commandDic, event = key, app = self) # the self keyword will be refered to as 'main' in the interpreter
+        ```
+        
+        
+Keywords: console,panda3d,python,gamedev
+Platform: any
 Description-Content-Type: text/markdown
