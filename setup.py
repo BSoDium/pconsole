@@ -16,12 +16,6 @@ setup(name = 'pconsole',
       long_description_content_type = 'text/markdown',
       include_package_data = True,
       install_requires = [
-        'panda3d',
-        'sys',
-        'os',
-        'traceback', 
-        'importlib', 
-        'pathlib', 
-        'json'
+        'panda3d'
       ]
 )
