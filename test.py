@@ -17,13 +17,16 @@ class testApp(ShowBase):
         self.mire.hide()
         self.is_shown = False
         
-        commandDic = {
-            "toggleImage":self.toggleImage
-        }
-        self.commandline = Console()
-        self.commandline.create(commandDic, app = self, event = 'f1')
-        self.task_mgr.add(self.update, "updatingTask")
+        def load():
+            nonlocal self
+            commandDic = {
+                "toggleImage":self.toggleImage
+            }
+            self.commandline = Console()
+            self.commandline.create(commandDic, app = self, event = 'f1')
+            self.task_mgr.add(self.update, "updatingTask")
 
+        self.accept('f8', load)
         '''
         # inputfield stuff
         props_mgr = TextPropertiesManager.get_global_ptr()

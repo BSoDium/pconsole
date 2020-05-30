@@ -1,4 +1,7 @@
 global-include Hermit-Regular.otf
 global-include TerminusTTF-4.47.0.ttf
+global-include TerminusTTF-Bold.ttf
 global-include bg.png
 global-include license.txt
+global-include config.json
+global-include test.jpeg

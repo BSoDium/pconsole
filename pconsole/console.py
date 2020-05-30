@@ -47,6 +47,7 @@ class Console:
             data = json.load(config)
         self._verbose = data['toggleverbose']
         self._framesize = data['framesize'] # [2 , 2] for fullscreen
+        self._disponstartup = data['disponstartup']
         self._minframesize = [0.8, 1]
         self._check_version = data['checkforupdates']
         if self._framesize[0] < self._minframesize[0] or self._framesize[1] < self._minframesize[1]:
@@ -90,7 +91,7 @@ class Console:
         self._indicator = DirectButton(text = 'csl> ', 
                                       command = self.switch_adr, 
                                       scale = self._textscale, 
-                                      pos = (0.01, 0, 0.051), 
+                                      pos = (0.01, 0, 0.049), 
                                       frameColor = (0,0,0,0), 
                                       text_font = self._font, 
                                       pressEffect = False, 
@@ -105,6 +106,7 @@ class Console:
                                 parent = self._gui,
                                 font= self._font)
         self.loadConsoleEntry()
+        self.update_res()
 
         # head
         self.ConsoleOutput('Pconsole ' + version,color = Vec4(0.1,0.1,1,1))
@@ -134,7 +136,7 @@ class Console:
         self.app = app
         if self.app == None: 
             self.ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
-        self.toggle() # initialize as hidden
+        if not self._disponstartup: self.toggle() # initialize as hidden
         return None
     
     def loadConsoleEntry(self): #-1.76, 0, -0.97
@@ -175,7 +177,7 @@ class Console:
         self.entry.destroy()
         self.loadConsoleEntry()
         self.ConsoleOutput(" ")
-        self.ConsoleOutput(str(MAINDIR)+"> "+data)
+        self.ConsoleOutput(self._indicator['text']+data)
 
         def pyt_process():
             nonlocal data, self
@@ -345,7 +347,7 @@ class Console:
                     self._LinesOnDisplay[0].lineIndex = len(self._SavedLines)-1 # save the line number
                     previous = ''
                     for t in range(i): previous+=discretized[t] # sum up all the previous chars
-                    self._LinesOnDisplay[0].charInterval = [len(previous), len(previous)+len(discretized[i])]
+                    self._LinesOnDisplay[0].charInterval = [len(previous), len(previous)+len(discretized[i])-1]
         elif mode == 'edit':
             self._SavedLines[-1] = (output, color) # save the line, might not work properly
             for discretized in text:
@@ -430,7 +432,7 @@ class Console:
             else:
                 self.ConsoleOutput("This version of pconsole is currently up-to-date", Vec4(0.8,0.7,0,1))
         except:
-            self.ConsoleOutput(" \nfailed to connect to the Pypi database\n ", Vec4(1,0.9,0,1))
+            self.ConsoleOutput("failed to connect to the Pypi database\n ", Vec4(0.8,0.7,0,1))
         
     def usage(self,index):
         '''
@@ -471,8 +473,8 @@ class Console:
         return None
 
     def credits(self):
-        self.ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project")
-        self.ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information")
+        self.ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project.")
+        self.ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
         self.ConsoleOutput("Download the panda3d engine at panda3d.org")
 
     def showLicense(self):

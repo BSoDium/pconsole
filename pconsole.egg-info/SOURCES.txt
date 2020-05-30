@@ -2,10 +2,13 @@ MANIFEST.in
 README.md
 setup.cfg
 setup.py
+test.jpeg
 pconsole/Hermit-Regular.otf
 pconsole/TerminusTTF-4.47.0.ttf
+pconsole/TerminusTTF-Bold.ttf
 pconsole/__init__.py
 pconsole/cmd_command.py
+pconsole/config.json
 pconsole/console.py
 pconsole/defaults.py
 pconsole/file.py

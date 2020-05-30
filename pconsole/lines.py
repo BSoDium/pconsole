@@ -27,18 +27,20 @@ def redistribute(lines, char_limit, line_limit, textnodeList): # lines = console
         else:
             for t in range(i, line_limit):
                 textnodeList[t].textnode.text = ""
+                textnodeList[t].charInterval = [0,0]
             return
         
         text = [line[t:t+char_limit] for t in range(0,len(line),char_limit)]
         n = len(text)
         text.reverse()
         for j in range(n):
-            textnodeList[i].textnode.text = text[j]
-            textnodeList[i].textnode.fg = color
-            textnodeList[i].lineIndex = len(SavedContent) - l
-            previous = ''
-            for t in range(j): previous+=text[t]
-            textnodeList[i].charInterval = [len(previous), len(previous) + len(text[j])]
+            if i < line_limit: # idk why but the while loop sometimes isn't triggered
+                textnodeList[i].textnode.text = text[j]
+                textnodeList[i].textnode.fg = color
+                textnodeList[i].lineIndex = len(SavedContent) - l
+                previous = ''
+                for t in range(j): previous+=text[t]
+                textnodeList[i].charInterval = [len(previous), len(previous) + len(text[j])-1]
             i+=1
         l+=1
     return
@@ -48,10 +50,11 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
     # count defined lines
     m = 0
     for x in lines:
-        m+=1+len(x)//char_limit # count the defined lines (an undefined line would return None as lineIndex) 
+        if not x==None:
+            m+=1+len(x)//char_limit # count the defined lines (an undefined line would return None as lineIndex) 
     # initialize counter
     if delta == 1:
-        if index + line_limit > m: return index # need to rework this
+        if index + line_limit >= m: return index 
         i = 0
     elif delta == -1:
         if index <= 0: return index # reached the bottom
@@ -62,6 +65,8 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
         if 0 <= i+delta < n: # middle
             l.textnode.text = textnodeList[i+delta].textnode.text
             l.textnode.fg = textnodeList[i+delta].textnode.fg
+            l.lineIndex = textnodeList[i+delta].lineIndex
+            l.charInterval = textnodeList[i+delta].charInterval
         else: # limit
             boolsign = delta > 0 # boolean equivalent of delta (delta equals +-1)
             if not l.lineIndex == None:
@@ -79,26 +84,38 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
                     temp = [offboundstr[t:t+char_limit] for t in range(0,len(offboundstr),char_limit)]
                     l.textnode.text = temp[-1]
                     l.textnode.fg = offboundfg
+                    l.lineIndex = l.lineIndex - delta
+                    l.charInterval = [len(offboundstr)-len(temp[-1]),len(offboundstr)-1]
                 else: # keep loading the same line                    
-                    try: l.textnode.text = chunk[ci[0] - 1 - char_limit : ci[0] - 1]
+                    try: 
+                        l.textnode.text = chunk[ci[0] - 1 - char_limit : ci[0] - 1]
+                        l.charInterval = [ci[0] - 1 - char_limit , ci[0] - 1]
                     except IndexError:
                         l.textnode.text = chunk[:ci[0] - 1]
+                        l.charInterval = [0 , ci[0] - 1]
                     l.textnode.fg = chunkcolor
+                    # lineIndex stays the same
             else: # going down
                 if ci[1] == len(chunk) - 1: # loading new line
                     offboundstr = lines[l.lineIndex - delta][0] # delta is a relative int
                     offboundfg = lines[l.lineIndex - delta][1]
-                    try: l.textnode.text = offboundstr[:char_limit]
+                    try: 
+                        l.textnode.text = offboundstr[:char_limit]
+                        l.charInterval = [0,char_limit]
                     except IndexError:
                         l.textnode.text = offboundstr
+                        l.charInterval = [0,len(offboundstr)-1]
                     l.textnode.fg = offboundfg
+                    l.lineIndex = l.lineIndex - delta
                 else: # keep loading the same line
-                    try: l.textnode.text = chunk[ci[1]+1:ci[1]+1+char_limit]
+                    try: 
+                        l.textnode.text = chunk[ci[1]+1:ci[1]+1+char_limit]
+                        l.charInterval = [ci[1]+1,ci[1]+1+char_limit]
                     except IndexError:
                         l.textnode.text = chunk[ci[1]+1:]
+                        l.charInterval = [ci[1]+1,len(chunk)-1]
                     l.textnode.fg = chunkcolor
-
-            
+                    # lineIndex stays the same
         i+=delta
     index += delta
     return index
