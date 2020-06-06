@@ -1,4 +1,7 @@
+[![PyPI version](https://badge.fury.io/py/pconsole.svg)](https://badge.fury.io/py/pconsole)
+
 # panda3d console
+
  a tiny and easy-to-use runtime console for panda3d-powered apps
 
 ### Installation

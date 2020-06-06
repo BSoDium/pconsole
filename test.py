@@ -12,21 +12,18 @@ class testApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
         self.disable_mouse()
-        self.mire = OnscreenImage(image = MAINDIR+ '/test.jpeg')
+        self.mire = OnscreenImage(image = os.path.join(MAINDIR,'test.jpeg'))
         self.mire.setScale(1.6, 1, 1)
         self.mire.hide()
         self.is_shown = False
         
-        def load():
-            nonlocal self
-            commandDic = {
-                "toggleImage":self.toggleImage
-            }
-            self.commandline = Console()
-            self.commandline.create(commandDic, app = self, event = 'f1')
-            self.task_mgr.add(self.update, "updatingTask")
+        commandDic = {
+            "toggleImage":self.toggleImage
+        }
+        self.commandline = Console()
+        self.commandline.create(commandDic, app = self, event = 'f1')
+        self.task_mgr.add(self.update, "updatingTask")
 
-        self.accept('f8', load)
         '''
         # inputfield stuff
         props_mgr = TextPropertiesManager.get_global_ptr()

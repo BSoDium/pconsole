@@ -1,12 +1,15 @@
 Metadata-Version: 2.1
 Name: pconsole
-Version: 0.3.3
+Version: 0.3.5
 Summary: Console for panda3d application written in python
 Home-page: https://github.com/l3alr0g/pconsole
 Author: l3alr0g
 Author-email: negreljerzy.philippe@gmail.com
 License: MIT
-Description: # panda3d console
+Description: [![PyPI version](https://badge.fury.io/py/pconsole.svg)](https://badge.fury.io/py/pconsole)
+        
+        # panda3d console
+        
          a tiny and easy-to-use runtime console for panda3d-powered apps
         
         ### Installation
@@ -44,5 +47,8 @@ Description: # panda3d console
         
         
 Keywords: console,panda3d,python,gamedev
-Platform: any
+Platform: Windows
+Platform: Linux
+Platform: OSX
+Requires-Python: >=3.5
 Description-Content-Type: text/markdown

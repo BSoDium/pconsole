@@ -19,6 +19,6 @@ pconsole/version.py
 pconsole.egg-info/PKG-INFO
 pconsole.egg-info/SOURCES.txt
 pconsole.egg-info/dependency_links.txt
-pconsole.egg-info/not-zip-safe
 pconsole.egg-info/requires.txt
 pconsole.egg-info/top_level.txt
+pconsole.egg-info/zip-safe

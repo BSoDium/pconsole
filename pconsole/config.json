@@ -1,9 +1,9 @@
 {
-    "framesize" : [2 , 2],
+    "framesize" : [0.8 , 2],
     "textscale" : 0.04,
     "textres" : 100,
-    "disponstartup" : true,
-    "fontpath" : "/TerminusTTF-Bold.ttf",
+    "disponstartup" : false,
+    "fontpath" : "TerminusTTF-Bold.ttf",
     "toggleverbose" : false,
     "doresizeroutine" : true,
     "doscrollingroutine" : false,

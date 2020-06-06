@@ -43,7 +43,7 @@ class Console:
         }
         
         # settings 
-        with open(PYMAINDIR + '\config.json') as config:
+        with open(os.path.join(PYMAINDIR,'config.json')) as config:
             data = json.load(config)
         self._verbose = data['toggleverbose']
         self._framesize = data['framesize'] # [2 , 2] for fullscreen
@@ -58,7 +58,7 @@ class Console:
         self._textres = data['textres']
         self._doresizeroutine = data['doresizeroutine']
         self._doscrollingroutine = data['doscrollingroutine']
-        self._font = loader.loadFont(MAINDIR + data['fontpath'])
+        self._font = loader.loadFont(os.path.join(MAINDIR,data['fontpath']))
         self._font.setPixelsPerUnit(self._textres)
         self._callBackIndex = -1
         self._scrollingIndex = 0 # start in non-scrolled state
@@ -376,11 +376,13 @@ class Console:
     def update_res(self):
         self.res = (base.win.getXSize(), base.win.getYSize(), base.getAspectRatio()) # update res
         # update frame stuff
+        #if self._maxsize < 10: return # we want the indicator to always stay inside the background frame
         self._Resframesize = [self._framesize[0]*self.res[2], self._framesize[1]]
         self.recomputeFrame()
         self._background.setScale(self._Resframesize[0]/self._framesize[0], 1, self._Resframesize[1]/self._framesize[1])
         # update text disposition
         redistribute(self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay)
+        self.entry['width'] = self._maxsize
         # debug
         if self._verbose: print('updated res to %s - x,y,ratio' %str((base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())))
 
@@ -478,7 +480,7 @@ class Console:
         self.ConsoleOutput("Download the panda3d engine at panda3d.org")
 
     def showLicense(self):
-        with open(PYMAINDIR + '\license.txt') as l:
+        with open(os.path.join(PYMAINDIR,'license.txt')) as l:
             license = l.read()
         self.ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
 

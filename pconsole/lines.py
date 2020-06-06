@@ -28,7 +28,7 @@ def redistribute(lines, char_limit, line_limit, textnodeList): # lines = console
             for t in range(i, line_limit):
                 textnodeList[t].textnode.text = ""
                 textnodeList[t].charInterval = [0,0]
-            return
+            return 
         
         text = [line[t:t+char_limit] for t in range(0,len(line),char_limit)]
         n = len(text)
@@ -43,7 +43,7 @@ def redistribute(lines, char_limit, line_limit, textnodeList): # lines = console
                 textnodeList[i].charInterval = [len(previous), len(previous) + len(text[j])-1]
             i+=1
         l+=1
-    return
+    return 
 
 def displace(lines, char_limit, line_limit, textnodeList, index, delta):
     n = len(textnodeList)
