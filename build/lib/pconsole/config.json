@@ -1,0 +1,12 @@
+{
+    "framesize" : [0.8 , 2],
+    "textscale" : 0.04,
+    "textres" : 100,
+    "disponstartup" : false,
+    "fontpath" : "TerminusTTF-Bold.ttf",
+    "toggleverbose" : false,
+    "doresizeroutine" : true,
+    "doscrollingroutine" : false,
+    "checkforupdates" : true,
+    "anchor" : "bottomleft"
+}
