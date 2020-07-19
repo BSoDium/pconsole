@@ -1,6 +1,7 @@
 import subprocess, threading, os
 __id__ = 'shell'
 PATH = os.getcwd()
+VERBOSE = False
 
 class Command:
     def __init__(self, cmd):
@@ -11,10 +12,10 @@ class Command:
         output = None
         def target():
             nonlocal output
-            print('[%s]: Thread started' %__id__)
-            self.process = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE)
+            if VERBOSE: print('[%s]: Thread started' %__id__)
+            self.process = subprocess.Popen(self.cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
             output = self.process.communicate()
-            print('[%s]: Thread finished' %__id__)
+            if VERBOSE: print('[%s]: Thread finished' %__id__)
 
         thread = threading.Thread(target=target)
         thread.start()

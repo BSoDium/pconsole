@@ -1,13 +1,13 @@
 @echo off
 cls
-@rem if this fails, try : python -m pip install --user --upgrade setuptools wheel
+:: if this fails, try : python -m pip install --user --upgrade setuptools wheel
 
 set "cecho=powershell write-host -fore"
 %cecho% Cyan CWD: %cd% 
 
-@rem updating pip
+:: updating pip
 python -m pip install pip==19.0.1
-@rem try catch block
+:: try catch block
 python setup.py sdist bdist_wheel 
 if %ERRORLEVEL% neq 0 CALL:ProcessError1
 
@@ -43,6 +43,6 @@ python -m pip install twine
 goto:eof
 
 :ECHORED 
-@rem unused
+:: unused
 %Windir%\System32\WindowsPowerShell\v1.0\Powershell.exe write-host -foregroundcolor Red %1 
 goto:eof

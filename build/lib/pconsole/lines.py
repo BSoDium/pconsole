@@ -51,7 +51,7 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
     m = 0
     for x in lines:
         if not x==None:
-            m+=1+len(x)//char_limit # count the defined lines (an undefined line would return None as lineIndex) 
+            m+=int(len(x)%char_limit != 0) + len(x)//char_limit # count the defined lines (an undefined line would return None as lineIndex) 
     # initialize counter
     if delta == 1:
         if index + line_limit >= m: return index 
@@ -61,61 +61,60 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
         i = n-1
     # loop
     while 0 <= i < n:
-        l = textnodeList[i]
-        if 0 <= i+delta < n: # middle
-            l.textnode.text = textnodeList[i+delta].textnode.text
-            l.textnode.fg = textnodeList[i+delta].textnode.fg
-            l.lineIndex = textnodeList[i+delta].lineIndex
-            l.charInterval = textnodeList[i+delta].charInterval
-        else: # limit
+        if i+delta < 0 or i+delta >=n: # limit
             boolsign = delta > 0 # boolean equivalent of delta (delta equals +-1)
-            if not l.lineIndex == None:
-                chunk = lines[l.lineIndex][0]
-                chunkcolor = lines[l.lineIndex][1]
+            if not textnodeList[i].lineIndex == None:
+                chunk = lines[textnodeList[i].lineIndex][0]
+                chunkcolor = lines[textnodeList[i].lineIndex][1]
             else:
                 chunk = ''
                 chunkcolor = (1,1,1,1)
             # splitting and formatting process
-            ci = l.charInterval
-            if boolsign: # going up
+            ci = textnodeList[i].charInterval
+            if boolsign and textnodeList[i].lineIndex > 0: # going up
                 if ci[0] == 0: # loading new line
-                    offboundstr = lines[l.lineIndex - delta][0]
-                    offboundfg = lines[l.lineIndex - delta][1]
+                    offboundstr = lines[textnodeList[i].lineIndex - delta][0]
+                    offboundfg = lines[textnodeList[i].lineIndex - delta][1]
                     temp = [offboundstr[t:t+char_limit] for t in range(0,len(offboundstr),char_limit)]
-                    l.textnode.text = temp[-1]
-                    l.textnode.fg = offboundfg
-                    l.lineIndex = l.lineIndex - delta
-                    l.charInterval = [len(offboundstr)-len(temp[-1]),len(offboundstr)-1]
+                    textnodeList[i].textnode.text = temp[-1]
+                    textnodeList[i].textnode.fg = offboundfg
+                    textnodeList[i].lineIndex = textnodeList[i].lineIndex - delta
+                    textnodeList[i].charInterval = [len(offboundstr)-len(temp[-1]),len(offboundstr)-1]
                 else: # keep loading the same line                    
                     try: 
-                        l.textnode.text = chunk[ci[0] - 1 - char_limit : ci[0] - 1]
-                        l.charInterval = [ci[0] - 1 - char_limit , ci[0] - 1]
+                        textnodeList[i].textnode.text = chunk[ci[0] - 1 - char_limit : ci[0] - 1]
+                        textnodeList[i].charInterval = [ci[0] - 1 - char_limit , ci[0] - 1]
                     except IndexError:
-                        l.textnode.text = chunk[:ci[0] - 1]
-                        l.charInterval = [0 , ci[0] - 1]
-                    l.textnode.fg = chunkcolor
+                        textnodeList[i].textnode.text = chunk[:ci[0] - 1]
+                        textnodeList[i].charInterval = [0 , ci[0] - 1]
+                    textnodeList[i].textnode.fg = chunkcolor
                     # lineIndex stays the same
             else: # going down
                 if ci[1] == len(chunk) - 1: # loading new line
-                    offboundstr = lines[l.lineIndex - delta][0] # delta is a relative int
-                    offboundfg = lines[l.lineIndex - delta][1]
+                    offboundstr = lines[textnodeList[i].lineIndex - delta][0] # delta is a relative int
+                    offboundfg = lines[textnodeList[i].lineIndex - delta][1]
                     try: 
-                        l.textnode.text = offboundstr[:char_limit]
-                        l.charInterval = [0,char_limit]
+                        textnodeList[i].textnode.text = offboundstr[:char_limit]
+                        textnodeList[i].charInterval = [0,char_limit]
                     except IndexError:
-                        l.textnode.text = offboundstr
-                        l.charInterval = [0,len(offboundstr)-1]
-                    l.textnode.fg = offboundfg
-                    l.lineIndex = l.lineIndex - delta
+                        textnodeList[i].textnode.text = offboundstr
+                        textnodeList[i].charInterval = [0,len(offboundstr)-1]
+                    textnodeList[i].textnode.fg = offboundfg
+                    textnodeList[i].lineIndex = textnodeList[i].lineIndex - delta
                 else: # keep loading the same line
                     try: 
-                        l.textnode.text = chunk[ci[1]+1:ci[1]+1+char_limit]
-                        l.charInterval = [ci[1]+1,ci[1]+1+char_limit]
+                        textnodeList[i].textnode.text = chunk[ci[1]+1:ci[1]+1+char_limit]
+                        textnodeList[i].charInterval = [ci[1]+1,ci[1]+1+char_limit]
                     except IndexError:
-                        l.textnode.text = chunk[ci[1]+1:]
-                        l.charInterval = [ci[1]+1,len(chunk)-1]
-                    l.textnode.fg = chunkcolor
+                        textnodeList[i].textnode.text = chunk[ci[1]+1:]
+                        textnodeList[i].charInterval = [ci[1]+1,len(chunk)-1]
+                    textnodeList[i].textnode.fg = chunkcolor
                     # lineIndex stays the same
+        else: # middle
+            textnodeList[i].textnode.text = textnodeList[i+delta].textnode.text
+            textnodeList[i].textnode.fg = textnodeList[i+delta].textnode.fg
+            textnodeList[i].lineIndex = textnodeList[i+delta].lineIndex
+            textnodeList[i].charInterval = textnodeList[i+delta].charInterval
         i+=delta
     index += delta
     return index

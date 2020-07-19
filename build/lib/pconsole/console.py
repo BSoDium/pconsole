@@ -14,6 +14,7 @@ from .cmd_command import Command
 from .version import __version__ as version
 from .file import BufferFile
 from .lines import redistribute, displace, OnscreenLine
+from .win_convert import convert
 from .defaults import __blacklist__ # change to module names when defined
 
 temp = os.path.dirname(__file__)
@@ -24,8 +25,8 @@ MAINDIR = Filename.from_os_specific(PYMAINDIR).getFullpath()
 class Console:
     def __init__(self):
         base.a2dBottomLeft.set_bin('gui-popup', 0) # prevent overlapping issues
-        sys.stdout = BufferFile(self.ConsoleOutput)
-        sys.stderr = BufferFile(self.CMDError)
+        sys.stdout = BufferFile(self._ConsoleOutput)
+        sys.stderr = BufferFile(self._CMDError)
         self.res = (base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())
         return None
         
@@ -37,12 +38,14 @@ class Console:
                     "license":self.showLicense}
         self.CommandDictionary = {**CommandDictionary,**defaults} # copy for further use in other methods
         self.consoles = {
-            "csl> ":"Pconsole "+version,
+            "csl> ":"Pconsole " + version,
             "pyt> ":sys.version[:5]+" runtime python console",
-            "cmd> ":"Microsoft windows commandline"
+            "cmd> ":"OS commandline"
         }
         
         # settings 
+        with open(os.path.join(PYMAINDIR, 'win_symbols.json'), encoding = 'utf-8') as w_symb:
+            self.win_symbols = json.load(w_symb)
         with open(os.path.join(PYMAINDIR,'config.json')) as config:
             data = json.load(config)
         self._verbose = data['toggleverbose']
@@ -65,7 +68,7 @@ class Console:
         self._InputLines = []
         self._SavedLines = [] # this list will contain the recorded lines (for scrolling and resizing purpose)
         # resizing
-        self.recomputeFrame()
+        self._recomputeFrame()
         
         # gui objects
         self._gui = NodePath('GuiNp')
@@ -89,7 +92,7 @@ class Console:
                                             font= self._font,
                                             line = None) for x in range(self._maxlines)] # the 0 value is the index of the chunk (the actual line)
         self._indicator = DirectButton(text = 'csl> ', 
-                                      command = self.switch_adr, 
+                                      command = self._switch_adr, 
                                       scale = self._textscale, 
                                       pos = (0.01, 0, 0.049), 
                                       frameColor = (0,0,0,0), 
@@ -105,47 +108,47 @@ class Console:
                                 fg = (0.7,0.9,0.9,1), 
                                 parent = self._gui,
                                 font= self._font)
-        self.loadConsoleEntry()
-        self.update_res()
+        self._loadConsoleEntry()
+        self._update_res()
 
         # head
-        self.ConsoleOutput('Pconsole ' + version,color = Vec4(0.1,0.1,1,1))
-        self.ConsoleOutput('Successfully loaded all components',color = Vec4(0,1,0,1))
-        self.ConsoleOutput('Type "help", "credits" or "license" for more information.')
-        self.ConsoleOutput("Click the prompt keyword or press f2 to change the targeted console")
+        self._ConsoleOutput('Pconsole ' + version,color = Vec4(0.1,0.1,1,1))
+        self._ConsoleOutput('Successfully loaded all components',color = Vec4(0,1,0,1))
+        self._ConsoleOutput('Type "help", "credits" or "license" for more information.')
+        self._ConsoleOutput("Click the prompt keyword or press f2 to change the targeted console")
 
         # check for updates in a separate thread
-        thread = threading.Thread(target = self.versioncheck, args = ())
+        thread = threading.Thread(target = self._versioncheck, args = ())
         thread.daemon = True
         thread.start()
 
         # base.buttonThrowers
         self._eventhandler = DirectObject.DirectObject()
         if event == 'f2':
-            self.ConsoleOutput('failed to configure %s key as toggling event, loading default (f1)' %event, Vec4(0.8,0.8,1,1))
+            self._ConsoleOutput('failed to configure %s key as toggling event, loading default (f1)' %event, Vec4(0.8,0.8,1,1))
             event = 'f1' # default if conflict with f2
-        self._eventhandler.accept(event , self.toggle)
-        self._eventhandler.accept('arrow_up',self.callBack,[True])
-        self._eventhandler.accept('arrow_down',self.callBack,[False])
-        self._eventhandler.accept('f2', self.switch_adr)
+        self._eventhandler.accept(event , self._toggle)
+        self._eventhandler.accept('arrow_up',self._callBack,[True])
+        self._eventhandler.accept('arrow_down',self._callBack,[False])
+        self._eventhandler.accept('f2', self._switch_adr)
         if self._doscrollingroutine:
-            self._eventhandler.accept('wheel_up', self.scroll, [True])
-            self._eventhandler.accept('wheel_down', self.scroll, [False])
-        if self._doresizeroutine: self._eventhandler.accept('aspectRatioChanged', self.update_res)
+            self._eventhandler.accept('wheel_up', self._scroll, [True])
+            self._eventhandler.accept('wheel_down', self._scroll, [False])
+        if self._doresizeroutine: self._eventhandler.accept('aspectRatioChanged', self._update_res)
 
         self.app = app
         if self.app == None: 
-            self.ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
-        if not self._disponstartup: self.toggle() # initialize as hidden
+            self._ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
+        if not self._disponstartup: self._toggle() # initialize as hidden
         return None
     
-    def loadConsoleEntry(self): #-1.76, 0, -0.97
+    def _loadConsoleEntry(self): #-1.76, 0, -0.97
         self.entry = DirectEntry(scale=self._textscale,
                                     frameColor = (0.05,0.05,0.05,0),
                                     text_fg = (1,1,1,1),
                                     pos = (0.1, 0, 0.05),
                                     overflow = 1,
-                                    command=self.ConvertToFunction,
+                                    command=self._ConvertToFunction,
                                     initialText="",
                                     numLines = 1,
                                     focus=True,
@@ -154,7 +157,7 @@ class Console:
                                     entryFont = self._font)
         return None
     
-    def toggle(self):
+    def _toggle(self):
         if self.hidden:
             self._gui.show()
         else:
@@ -162,11 +165,7 @@ class Console:
         self.hidden = not(self.hidden)
         return None
     
-    def clearText(self):
-        self.entry.enterText('')
-        return None
-    
-    def ConvertToFunction(self,data):
+    def _ConvertToFunction(self,data):
 
         if len(data) == 0: return None 
         # callback stuff
@@ -175,25 +174,25 @@ class Console:
 
         # gui
         self.entry.destroy()
-        self.loadConsoleEntry()
-        self.ConsoleOutput(" ")
-        self.ConsoleOutput(self._indicator['text']+data)
+        self._loadConsoleEntry()
+        self._ConsoleOutput(" ")
+        self._ConsoleOutput(self._indicator['text']+data)
 
         def pyt_process():
             nonlocal data, self
-            main = self.app
+            main = self.app # defined so the user can access it from the commandline
             data = data.strip()
             forb = list(__blacklist__.keys())
             for a in forb:
                 k = len(a)
                 if data[:k] == a:
-                    self.CMDError('Sorry, this command has been disabled internally\nReason:')
-                    self.CMDError(__blacklist__[a])
+                    self._CMDError('Sorry, this command has been disabled internally\nReason:')
+                    self._CMDError(__blacklist__[a])
                     return None
             try:
                 exec(data.strip())
             except Exception:
-                self.CMDError(traceback.format_exc())
+                self._CMDError(traceback.format_exc())
             except SystemExit:
                 pass
             return None
@@ -208,7 +207,7 @@ class Console:
                 Buffer.append(data[0:ind]) # indentify keyword
                 data = data[ind:len(data)] # strip the string as we move along
                 if not(data[0] == '(' and data[len(data)-1] == ')'): # closing parenthesis syntax stuff
-                    self.ConsoleOutput('Missing parenthesis ")" in "'+ Buffer[0] + data + '"', (1,0,0,1))
+                    self._ConsoleOutput('Missing parenthesis ")" in "'+ Buffer[0] + data + '"', (1,0,0,1))
                     return None
                 else:pass
 
@@ -217,7 +216,7 @@ class Console:
                 left = find_all_str('(', data)
                 right = find_all_str(')', data)
                 if len(left) != len(right): # unmatched parethesis error
-                    self.ConsoleOutput('SyntaxError: unmatched parenthesis found in expression', (1,0,0,1))
+                    self._ConsoleOutput('SyntaxError: unmatched parenthesis found in expression', (1,0,0,1))
                     return None
                 # we need to split the list according to the parenthesis structure 
 
@@ -276,27 +275,27 @@ class Console:
                         ChosenCommand(*Buffer[1:])
                         return None
                     except TypeError:
-                        self.ConsoleOutput("Wrong arguments provided", (1,0,0,1))
+                        self._ConsoleOutput("Wrong arguments provided", (1,0,0,1))
                         return None
                 else:
                     try:
                         ChosenCommand()
                         return None
                     except TypeError:
-                        self.ConsoleOutput('This command requires (at least) one argument', (1,0,0,1))
+                        self._ConsoleOutput('This command requires (at least) one argument', (1,0,0,1))
                         return None
             except:
-                self.CommandError(Buffer[0])
+                self._CommandError(Buffer[0])
             
         def cmd_process():
             nonlocal data, self
             command = Command(data.strip())
             try:
                 code, output = command.run(timeout = 1)
-                self.ConsoleOutput(output[0])
-                self.CMDError(output[1])
+                self._ConsoleOutput(output[0])
+                self._CMDError(output[1])
             except:
-                self.CMDError(traceback.format_exc())
+                self._CMDError(traceback.format_exc())
             
         if self._indicator['text'] == 'pyt> ':
             pyt_process()
@@ -307,31 +306,26 @@ class Console:
         return None
         
 
-    def CMDError(self,report):
+    def _CMDError(self,report):
         if report == None: return
         elif type(report) is not str: report = str(report)
         else:
             sys.__stderr__.write(report)
-            self.ConsoleOutput(report, (1,0,0,1))
+            self._ConsoleOutput(report, (1,0,0,1))
         return 
     
-    def CommandError(self,report):
-        self.ConsoleOutput("Traceback (most recent call last):", (1,0,0,1))
-        self.ConsoleOutput("SyntaxError: command '"+str(report)+"' is not defined", (1,0,0,1))
+    def _CommandError(self, report):
+        self._ConsoleOutput("Pconsole (most recent call last):", (1,0,0,1))
+        self._ConsoleOutput("CommandError: command '"+str(report)+"' is not defined", (1,0,0,1))
     
-    def ConsoleOutput(self, output, color:Vec4 = Vec4(1,1,1,1), mode:str = 'add', CMD_type = False):
-        keywords = {'cmd> ':'\\r\\n', 'pyt> ':'\n', 'csl> ':'\n'}
+    def _ConsoleOutput(self, output, color:Vec4 = Vec4(1,1,1,1), mode:str = 'add', CMD_type = False, encoding = 'utf-8'):
+        keyword = "\n"
         if output == None: return
-        elif type(output) is not str: output = str(output)
+        elif type(output) is bytes: output = convert(output, self.win_symbols)
         if CMD_type: sys.__stdout__.write(output)
 
-        if self._indicator['text'] == 'cmd> ':
-            text = output.split(keywords['cmd> '])
-        elif self._indicator['text'] == 'pyt> ':
-            text = output.split(keywords['pyt> '])
-        elif self._indicator['text'] == 'csl> ':
-            text = output.split(keywords['csl> '])
-        
+        text = output.split(keyword)
+
         text = [[x[i:i+self._maxsize] for i in range(0,len(x),self._maxsize)] for x in text]
         if mode == 'add':
             for discretized in text:
@@ -358,12 +352,12 @@ class Console:
                     self._LinesOnDisplay[i].lineIndex = len(self._SavedLines)-1 # charinterval not handled
         return None
     
-    def scroll(self, direction:bool):
+    def _scroll(self, direction:bool):
         sign = (-1)**int(direction+1) # -1 or 1 depending on the boolean
         self._scrollingIndex = displace(self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay, self._scrollingIndex, sign)
 
     
-    def switch_adr(self):
+    def _switch_adr(self):
         current = self._indicator['text']
         n = list(self.consoles.keys()).index(current)
         if n == len(self.consoles.keys())-1:
@@ -373,12 +367,12 @@ class Console:
         self._indicator['text'] = list(self.consoles.keys())[n]
         self._info.text = "targeting: " + self.consoles[self._indicator['text']]
     
-    def update_res(self):
+    def _update_res(self):
         self.res = (base.win.getXSize(), base.win.getYSize(), base.getAspectRatio()) # update res
         # update frame stuff
         #if self._maxsize < 10: return # we want the indicator to always stay inside the background frame
         self._Resframesize = [self._framesize[0]*self.res[2], self._framesize[1]]
-        self.recomputeFrame()
+        self._recomputeFrame()
         self._background.setScale(self._Resframesize[0]/self._framesize[0], 1, self._Resframesize[1]/self._framesize[1])
         # update text disposition
         redistribute(self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay)
@@ -386,7 +380,7 @@ class Console:
         # debug
         if self._verbose: print('updated res to %s - x,y,ratio' %str((base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())))
 
-    def callBack(self, key : bool):
+    def _callBack(self, key : bool):
         invertedInput = self._InputLines[::-1]
         if key: # up key pressed
             try: # avoid out of range errors
@@ -401,14 +395,14 @@ class Console:
                     self.entry.enterText(([''] + invertedInput)[self._callBackIndex])
             except: pass
         
-    def textToLine(self,text):
+    def _textToLine(self,text):
         try:
             text = text.replace("\n","")
         except:
             pass
         return text
 
-    def recomputeFrame(self):
+    def _recomputeFrame(self):
         def getfontbounds():
             nonlocal self
             temp = OnscreenText(text = '1234567890', scale = self._textscale)
@@ -420,21 +414,21 @@ class Console:
         self._maxsize = int(self._Resframesize[0]/width)
         self._maxlines = int((self._Resframesize[1]-0.12)/self._textscale) + 1
 
-    def versioncheck(self):
+    def _versioncheck(self):
         # version_check
         if not self._check_version: return
-        self.ConsoleOutput(" \nChecking for updates...", Vec4(0.8,0.7,0,1))
+        self._ConsoleOutput(" \nChecking for updates...", Vec4(0.8,0.7,0,1))
         try:
             data = str(subprocess.run([sys.executable, '-m', 'pip', 'install', '{}==invalid'.format('pconsole')], capture_output=True, text=True)).split('from versions: ')[1]
             latest = data[:data.find(')')][-5:]
             if latest != version and int(''.join(version.split('.'))) < int(''.join(latest.split('.'))):
-                self.ConsoleOutput("This version of pconsole ({}) is outdated.\nPlease consider updating it using the command 'pip install pconsole'\n ".format(version), Vec4(0.8,0.7,0,1))
+                self._ConsoleOutput("This version of pconsole ({}) is outdated.\nPlease consider updating it using the command 'pip install pconsole'\n ".format(version), Vec4(0.8,0.7,0,1))
             elif int(''.join(version.split('.'))) > int(''.join(latest.split('.'))):
-                self.ConsoleOutput("This version of pconsole ({}) hasn't been released yet.\nIt may therefore contain some bugs.\nPlease consider installing a stable build using \n'pip install pconsole'\n ".format(version), Vec4(0.8,0.7,0,1))
+                self._ConsoleOutput("This version of pconsole ({}) hasn't been released yet.\nIt may therefore contain some bugs.\nPlease consider installing a stable build using \n'pip install pconsole'\n ".format(version), Vec4(0.8,0.7,0,1))
             else:
-                self.ConsoleOutput("This version of pconsole is currently up-to-date", Vec4(0.8,0.7,0,1))
+                self._ConsoleOutput("This version of pconsole is currently up-to-date", Vec4(0.8,0.7,0,1))
         except:
-            self.ConsoleOutput("failed to connect to the Pypi database\n ", Vec4(0.8,0.7,0,1))
+            self._ConsoleOutput("failed to connect to the Pypi database\n ", Vec4(0.8,0.7,0,1))
         
     def usage(self,index):
         '''
@@ -442,47 +436,47 @@ class Console:
         '''
         try:
             i = self.CommandDictionary[index]
-            self.ConsoleOutput("Help concerning command '%s':" % str(index), color = (0.243,0.941,1,1))
-            self.ConsoleOutput("- associated function name is '%s'" % str(i.__name__))
-            self.ConsoleOutput("- Documentation provided: ")
-            doc = self.textToLine(str(i.__doc__))
+            self._ConsoleOutput("Help concerning command '%s':" % str(index), color = (0.243,0.941,1,1))
+            self._ConsoleOutput("- associated function name is '%s'" % str(i.__name__))
+            self._ConsoleOutput("- Documentation provided: ")
+            doc = self._textToLine(str(i.__doc__))
             if not doc == str(None):
-                self.ConsoleOutput(doc.strip())
+                self._ConsoleOutput(doc.strip())
             else:
-                self.ConsoleOutput("No docstring found")
-            self.ConsoleOutput("- Known arguments: ")
+                self._ConsoleOutput("No docstring found")
+            self._ConsoleOutput("- Known arguments: ")
             
             arg = list(i.__code__.co_varnames)
             #del arg[0] # remove the self argument
             arg = str(arg)
             if len(arg)-2:
-                self.ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
+                self._ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
             else:
-                self.ConsoleOutput("No arguments required")
+                self._ConsoleOutput("No arguments required")
         except KeyError: # not in the dictionary
-            self.ConsoleOutput("Unknown command '%s'" % str(index), (1,0,0,1))
+            self._ConsoleOutput("Unknown command '%s'" % str(index), (1,0,0,1))
         return None
     
     def help(self):
         '''
         Shows a list of available commands
         '''
-        self.ConsoleOutput("List of available commands: ", color = (0.243,0.941,1,1))
+        self._ConsoleOutput("List of available commands: ", color = (0.243,0.941,1,1))
         for i in self.CommandDictionary:
-            self.ConsoleOutput("- "+str(i))
-        self.ConsoleOutput(" ")
-        self.ConsoleOutput("Use usage(command) for more details on a specific command")
+            self._ConsoleOutput("- "+str(i))
+        self._ConsoleOutput(" ")
+        self._ConsoleOutput("Use usage(command) for more details on a specific command")
         return None
 
     def credits(self):
-        self.ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project.")
-        self.ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
-        self.ConsoleOutput("Download the panda3d engine at panda3d.org")
+        self._ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project.")
+        self._ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
+        self._ConsoleOutput("Download the panda3d engine at panda3d.org")
 
     def showLicense(self):
         with open(os.path.join(PYMAINDIR,'license.txt')) as l:
             license = l.read()
-        self.ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
+        self._ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
 
 def find_all_str(sample, string):
     n = len(sample)

@@ -1,2 +1,2 @@
-__version__ = '0.3.6'
-_changelog = 'switched to wheel files (compatibility issues)'
+__version__ = '0.4.0'
+_changelog = 'added special characters support for the cmd console'
