@@ -29,5 +29,5 @@ class Command:
                 pass
             thread.join()
         #print(subprocess.check_output(PATH))
-        return self.process.returncode, output
+        return output
 

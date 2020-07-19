@@ -49,6 +49,7 @@ class Console:
         with open(os.path.join(PYMAINDIR,'config.json')) as config:
             data = json.load(config)
         self._verbose = data['toggleverbose']
+        self._bg_transp = data['bg_transparency']
         self._framesize = data['framesize'] # [2 , 2] for fullscreen
         self._disponstartup = data['disponstartup']
         self._minframesize = [0.8, 1]
@@ -75,7 +76,7 @@ class Console:
         self._gui.reparentTo(base.a2dBottomLeft)
         _cardmaker = CardMaker('bg')
         _cardmaker.setFrame(-0, self._framesize[0], 0, self._framesize[1])
-        _cardmaker.setColor(0,0,0,0.95)
+        _cardmaker.setColor(0,0,0,self._bg_transp)
         _cardmaker.set_has_uvs(False)
         _cardmaker.set_has_normals(False)
         self._background = self._gui.attach_new_node(_cardmaker.generate())
@@ -101,7 +102,7 @@ class Console:
                                       text_fg = (1,1,1,1), 
                                       text_align = TextNode.ALeft, 
                                       parent = self._gui)
-        self._info = OnscreenText(text = 'targeting: 3.8.3 runtime python console ', 
+        self._info = OnscreenText(text = 'targeting: ' + self.consoles[self._indicator['text']], 
                                 pos = (0.01, 0.01), 
                                 scale = self._textscale*0.95, 
                                 align = TextNode.ALeft, 
@@ -117,14 +118,10 @@ class Console:
         self._ConsoleOutput('Type "help", "credits" or "license" for more information.')
         self._ConsoleOutput("Click the prompt keyword or press f2 to change the targeted console")
 
-        # check for updates in a separate thread
-        thread = threading.Thread(target = self._versioncheck, args = ())
-        thread.daemon = True
-        thread.start()
-
         # base.buttonThrowers
         self._eventhandler = DirectObject.DirectObject()
         if event == 'f2':
+            self._ConsoleOutput(" ")
             self._ConsoleOutput('failed to configure %s key as toggling event, loading default (f1)' %event, Vec4(0.8,0.8,1,1))
             event = 'f1' # default if conflict with f2
         self._eventhandler.accept(event , self._toggle)
@@ -138,8 +135,15 @@ class Console:
 
         self.app = app
         if self.app == None: 
+            self._ConsoleOutput(" ")
             self._ConsoleOutput("Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
         if not self._disponstartup: self._toggle() # initialize as hidden
+        
+        # check for updates in a separate thread
+        thread = threading.Thread(target = self._versioncheck, args = ())
+        thread.daemon = True
+        thread.start()
+        
         return None
     
     def _loadConsoleEntry(self): #-1.76, 0, -0.97
@@ -291,7 +295,7 @@ class Console:
             nonlocal data, self
             command = Command(data.strip())
             try:
-                code, output = command.run(timeout = 1)
+                output = command.run(timeout = 1)
                 self._ConsoleOutput(output[0])
                 self._CMDError(output[1])
             except:
@@ -319,6 +323,8 @@ class Console:
         self._ConsoleOutput("CommandError: command '"+str(report)+"' is not defined", (1,0,0,1))
     
     def _ConsoleOutput(self, output, color:Vec4 = Vec4(1,1,1,1), mode:str = 'add', CMD_type = False, encoding = 'utf-8'):
+        redistribute(self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay)
+        
         keyword = "\n"
         if output == None: return
         elif type(output) is bytes: output = convert(output, self.win_symbols)
@@ -376,6 +382,7 @@ class Console:
         self._background.setScale(self._Resframesize[0]/self._framesize[0], 1, self._Resframesize[1]/self._framesize[1])
         # update text disposition
         redistribute(self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay)
+        self._scrollingIndex = 0 # reset scrolling
         self.entry['width'] = self._maxsize
         # debug
         if self._verbose: print('updated res to %s - x,y,ratio' %str((base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())))

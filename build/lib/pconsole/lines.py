@@ -81,36 +81,26 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
                     textnodeList[i].lineIndex = textnodeList[i].lineIndex - delta
                     textnodeList[i].charInterval = [len(offboundstr)-len(temp[-1]),len(offboundstr)-1]
                 else: # keep loading the same line                    
-                    try: 
-                        textnodeList[i].textnode.text = chunk[ci[0] - 1 - char_limit : ci[0] - 1]
-                        textnodeList[i].charInterval = [ci[0] - 1 - char_limit , ci[0] - 1]
-                    except IndexError:
-                        textnodeList[i].textnode.text = chunk[:ci[0] - 1]
-                        textnodeList[i].charInterval = [0 , ci[0] - 1]
+                    textnodeList[i].textnode.text = chunk[max(ci[0] - char_limit, 0) : ci[0]]
+                    textnodeList[i].charInterval = [max(ci[0] - char_limit, 0) , ci[0]]
                     textnodeList[i].textnode.fg = chunkcolor
                     # lineIndex stays the same
             else: # going down
                 if ci[1] == len(chunk) - 1: # loading new line
                     offboundstr = lines[textnodeList[i].lineIndex - delta][0] # delta is a relative int
                     offboundfg = lines[textnodeList[i].lineIndex - delta][1]
-                    try: 
-                        textnodeList[i].textnode.text = offboundstr[:char_limit]
-                        textnodeList[i].charInterval = [0,char_limit]
-                    except IndexError:
-                        textnodeList[i].textnode.text = offboundstr
-                        textnodeList[i].charInterval = [0,len(offboundstr)-1]
+                    
+                    textnodeList[i].textnode.text = offboundstr[:min(char_limit, len(offboundstr))]
+                    textnodeList[i].charInterval = [0,min(char_limit-1, len(offboundstr)-1)]
+                    
                     textnodeList[i].textnode.fg = offboundfg
                     textnodeList[i].lineIndex = textnodeList[i].lineIndex - delta
                 else: # keep loading the same line
-                    try: 
-                        textnodeList[i].textnode.text = chunk[ci[1]+1:ci[1]+1+char_limit]
-                        textnodeList[i].charInterval = [ci[1]+1,ci[1]+1+char_limit]
-                    except IndexError:
-                        textnodeList[i].textnode.text = chunk[ci[1]+1:]
-                        textnodeList[i].charInterval = [ci[1]+1,len(chunk)-1]
+                    textnodeList[i].textnode.text = chunk[ci[1]+1 : min(len(chunk),ci[1]+1+char_limit)]
+                    textnodeList[i].charInterval = [ci[1]+1 , min(len(chunk)-1,ci[1]+char_limit)]
                     textnodeList[i].textnode.fg = chunkcolor
                     # lineIndex stays the same
-        else: # middle
+        else: # middle lines (no need to load)
             textnodeList[i].textnode.text = textnodeList[i+delta].textnode.text
             textnodeList[i].textnode.fg = textnodeList[i+delta].textnode.fg
             textnodeList[i].lineIndex = textnodeList[i+delta].lineIndex
@@ -119,7 +109,7 @@ def displace(lines, char_limit, line_limit, textnodeList, index, delta):
     index += delta
     return index
 
-def find_all_list(element, list):
+def find_all_list(element, list): # unused
     indices = []
     for i in range(len(list)):
         if element == list[i]:
