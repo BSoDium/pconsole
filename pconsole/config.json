@@ -1,7 +1,8 @@
 {
-    "framesize" : [0.8 , 2],
+    "framesize" : [1 , 2],
     "textscale" : 0.04,
     "textres" : 100,
+    "bg_transparency" : 0.95,
     "disponstartup" : false,
     "fontpath" : "TerminusTTF-Bold.ttf",
     "toggleverbose" : false,

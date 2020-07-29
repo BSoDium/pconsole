@@ -12,10 +12,11 @@ pconsole/config.json
 pconsole/console.py
 pconsole/defaults.py
 pconsole/file.py
-pconsole/inputfield.py
 pconsole/license.txt
 pconsole/lines.py
 pconsole/version.py
+pconsole/win_convert.py
+pconsole/win_symbols.json
 pconsole.egg-info/PKG-INFO
 pconsole.egg-info/SOURCES.txt
 pconsole.egg-info/dependency_links.txt
