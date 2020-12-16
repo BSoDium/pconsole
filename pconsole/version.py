@@ -1,2 +1,2 @@
-__version__ = '0.4.0'
-_changelog = 'added special characters support for the cmd console, fixed a few minor bugs'
+__version__ = '0.4.1'
+_changelog = 'fixed broken pip update-checking protocol. Now using requests package and pypi json data'

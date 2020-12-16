@@ -18,6 +18,9 @@ setup(name = 'pconsole',
       include_package_data = True,
       platforms=['Windows', 'Linux', 'OSX'],
       install_requires = [
-        'panda3d'
+        'panda3d',
+        'importlib',
+        'pathlib',
+        'requests'
       ]
 )

@@ -1,4 +1,4 @@
-from pconsole.console import Console
+from pconsole import Console
 from panda3d.core import Filename
 from direct.showbase.ShowBase import ShowBase
 from direct.gui.OnscreenImage import OnscreenImage
