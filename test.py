@@ -39,6 +39,4 @@ def testfunc():
     pass
 
 App = TestApp()
-try: App.run()
-except SystemExit:
-    pass
+App.run()

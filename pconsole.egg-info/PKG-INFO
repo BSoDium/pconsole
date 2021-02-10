@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: pconsole
-Version: 0.4.1
+Version: 0.5.0
 Summary: Console for panda3d application written in python
 Home-page: https://github.com/l3alr0g/pconsole
 Author: l3alr0g

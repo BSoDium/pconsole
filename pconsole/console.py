@@ -5,27 +5,22 @@ try:
     from direct.gui.DirectGui import DirectButton, DirectEntry
     from direct.gui.OnscreenText import OnscreenText
     from direct.showbase.ShowBase import DirectObject
-    from panda3d.core import Filename, NodePath, CardMaker, TransparencyAttrib, TextNode, Vec4
-    import panda3d
+    from panda3d.core import Filename, NodePath, CardMaker, TransparencyAttrib,  TextNode, Vec4
 except ModuleNotFoundError:
     print('[Panda3d console]: Failed to import panda3d module')
 import sys
 import os
-import traceback
-import importlib
 import pathlib
 import json
-import subprocess
 import threading
-from direct import showbase
-import requests
 from .process import py_process, csl_process, cmd_process
-from .version import __version__ as version
 from .file import BufferFile
 from .error import os_error, command_error
+from .version import __version__ as version
 from .lines import redistribute, displace, OnscreenLine
 from .win_convert import convert
 from .defaults import __blacklist__  # change to module names when defined
+from .utils import Utils
 
 temp = os.path.dirname(__file__)
 PYMAINDIR = str(pathlib.Path(temp).resolve())
@@ -57,10 +52,11 @@ class Console:
         - param <generic class> `app`:         User-specific main application, referred to with keyword `main` in console'''
 
         # dictionnaries and commands
-        defaults = {"usage": self.usage,
-                    "help": self.help,
-                    "credits": self.credits,
-                    "license": self.showLicense}
+        self._utils = Utils(self._ConsoleOutput) 
+        defaults = {"usage": self._utils.usage,
+                    "help": self._utils.help,
+                    "credits": self._utils.credits,
+                    "license": self._utils.show_license}
     
         # append default commands to command dictionnary
         self._command_dictionary = {**command_dictionary, **defaults}
@@ -69,6 +65,7 @@ class Console:
             "pyt> ": sys.version[:5]+" runtime python console",
             "os$> ": "OS commandline"
         }
+        self._utils.command_dictionary = self._command_dictionary
 
         # settings
         with open(os.path.join(PYMAINDIR, 'win_symbols.json'), encoding='utf-8') as w_symb:
@@ -80,7 +77,7 @@ class Console:
         self._framesize = data['framesize']  # [2 , 2] for fullscreen
         self._disponstartup = data['disponstartup']
         self._minframesize = [0.8, 1]
-        self._check_version = data['checkforupdates']
+        self._utils.check_version = data['checkforupdates']
         if self._framesize[0] < self._minframesize[0] or self._framesize[1] < self._minframesize[1]:
             self._framesize = self._minframesize
         # modified framesize according to screen res (most screens aren't square)
@@ -95,12 +92,12 @@ class Console:
         self._font.setPixelsPerUnit(self._textres)
 
         # scrolling
-        self._callbackindex = -1
-        self._scrollingindex = 0  # start in non-scrolled state
-        self._inputlines = [] # this list will contain the recorded lines (for scrolling and resizing purpose)
+        self._call_back_index = -1
+        self._scrolling_index = 0  # start in non-scrolled state
+        self._inputlines = [] # this list contains the recorded lines (for scrolling and resizing purpose)
         self._savedlines = []
         # resizing
-        self._recomputeFrame()
+        self._recompute_frame()
 
         # gui objects
         self._gui = NodePath('GuiNp')
@@ -146,7 +143,7 @@ class Console:
         self._update_res()
 
         # head
-        self._ConsoleOutput('Pconsole ' + version, color=Vec4(0.1, 0.1, 1, 1))
+        self._ConsoleOutput('Pconsole ' + version, color=Vec4(0.3, 0.3, 1, 1))
         self._ConsoleOutput(
             'Successfully loaded all components', color=Vec4(0, 1, 0, 1))
         self._ConsoleOutput(
@@ -162,8 +159,8 @@ class Console:
                 'failed to configure %s key as toggling event, loading default (f1)' % event, Vec4(0.8, 0.8, 1, 1))
             event = 'f1'  # default if conflict with f2
         self._eventhandler.accept(event, self.__toggle)
-        self._eventhandler.accept('arrow_up', self._callBack, [True])
-        self._eventhandler.accept('arrow_down', self._callBack, [False])
+        self._eventhandler.accept('arrow_up', self._call_back, [True])
+        self._eventhandler.accept('arrow_down', self._call_back, [False])
         self._eventhandler.accept('f2', self._switch_adr)
         if self._doscrollingroutine:
             self._eventhandler.accept('wheel_up', self._scroll, [True])
@@ -179,7 +176,7 @@ class Console:
         if not self._disponstartup: self.__toggle()  # initialize as hidden
 
         # check for updates in a separate thread
-        thread = threading.Thread(target=self._versioncheck, args=())
+        thread = threading.Thread(target=self._utils._versioncheck, args=())
         thread.daemon = True
         thread.start()
 
@@ -202,7 +199,9 @@ class Console:
         return None
 
     def __toggle(self):
-        '''Toggle console display.'''
+        """
+        Toggle console display.
+        """
         if self._hidden:
             self._gui.show()
         else:
@@ -217,7 +216,7 @@ class Console:
 
         if len(data) == 0: return None
         # reset scroll
-        self._callbackindex = -1
+        self._call_back_index = -1
         # save to scrolling buffer
         self._inputlines.append(data)
 
@@ -282,8 +281,8 @@ class Console:
 
     def _scroll(self, direction: bool):
         sign = (-1)**int(direction+1)  # -1 or 1 depending on the boolean
-        self._scrollingindex = displace(
-            self._savedlines, self._maxsize, self._maxlines, self._visible_lines, self._scrollingindex, sign)
+        self._scrolling_index = displace(
+            self._savedlines, self._maxsize, self._maxlines, self._visible_lines, self._scrolling_index, sign)
 
     def _switch_adr(self):
         current = self._indicator['text']
@@ -303,42 +302,35 @@ class Console:
         # if self._maxsize < 10: return # we want the indicator to always stay inside the background frame
         self._resframesize = [self._framesize[0]
             * self._res[2], self._framesize[1]]
-        self._recomputeFrame()
+        self._recompute_frame()
         self._background.setScale(
             self._resframesize[0]/self._framesize[0], 1, self._resframesize[1]/self._framesize[1])
         # update text disposition
         redistribute(self._savedlines, self._maxsize,
                      self._maxlines, self._visible_lines)
-        self._scrollingindex = 0  # reset scrolling
+        self._scrolling_index = 0  # reset scrolling
         self.entry['width'] = self._maxsize
         # debug
         if self._verbose: print('updated res to %s - x,y,ratio' % str(
             (base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())))
 
-    def _callBack(self, key: bool):
-        invertedInput = self._inputlines[::-1]
+    def _call_back(self, key: bool):
+        invertedinput = self._inputlines[::-1]
         if key:  # up key pressed
             try:  # avoid out of range errors
-                if self._callbackindex < len(invertedInput):
-                    self._callbackindex += 1
-                    self.entry.enterText(invertedInput[self._callbackindex])
+                if self._call_back_index < len(invertedinput):
+                    self._call_back_index += 1
+                    self.entry.enterText(invertedinput[self._call_back_index])
             except: pass
         else:
             try:
-                if self._callbackindex >= 0:
-                    self._callbackindex -= 1
+                if self._call_back_index >= 0:
+                    self._call_back_index -= 1
                     self.entry.enterText(
-                        ([''] + invertedInput)[self._callbackindex])
+                        ([''] + invertedinput)[self._call_back_index])
             except: pass
 
-    def _textToLine(self, text):
-        try:
-            text = text.replace("\n", "")
-        except:
-            pass
-        return text
-
-    def _recomputeFrame(self):
+    def _recompute_frame(self):
         def getfontbounds():
             nonlocal self
             temp = OnscreenText(text='1234567890', scale=self._textscale)
@@ -350,76 +342,6 @@ class Console:
         self._maxsize = int(self._resframesize[0]/width)
         self._maxlines = int((self._resframesize[1]-0.12)/self._textscale) + 1
 
-    def _versioncheck(self):
-        # version_check
-        if not self._check_version: return
-        self._ConsoleOutput(" \nChecking for updates...", Vec4(0.8, 0.7, 0, 1))
-        try:
-            # load project json
-            r = requests.get("https://pypi.org/pypi/pconsole/json")
-            # load last version available (str format)
-            latest = list(r.json()['releases'].keys())[-1]
-        except:
-            self._ConsoleOutput("failed to connect to the Pypi database via json protocol\n ", Vec4(0.8,0.7,0,1))
-            return
-
-        if latest != version and int(''.join(version.split('.'))) < int(''.join(latest.split('.'))):
-            self._ConsoleOutput("This version of pconsole ({}) is outdated.\nPlease consider updating it using the command 'pip install pconsole'\n ".format(
-                version), Vec4(0.8, 0.7, 0, 1))
-        elif int(''.join(version.split('.'))) > int(''.join(latest.split('.'))):
-            self._ConsoleOutput("This version of pconsole ({}) hasn't been released yet.\nIt may therefore contain some bugs.\nPlease consider installing a stable build using \n'pip install pconsole'\n ".format(version), Vec4(0.8,0.7,0,1))
-        else:
-            self._ConsoleOutput("This version of pconsole is currently up-to-date", Vec4(0.8,0.7,0,1))
-        
-        
-    def usage(self,index):
-        '''
-        Provides help concerning a given command
-        '''
-        try:
-            i = self._command_dictionary[index]
-            self._ConsoleOutput("Help concerning command '%s':" % str(index), color = (0.243,0.941,1,1))
-            self._ConsoleOutput("- associated function name is '%s'" % str(i.__name__))
-            self._ConsoleOutput("- Documentation provided: ")
-            doc = self._textToLine(str(i.__doc__))
-            if not doc == str(None):
-                self._ConsoleOutput(doc.strip())
-            else:
-                self._ConsoleOutput("No docstring found")
-            self._ConsoleOutput("- Known arguments: ")
-            
-            arg = list(i.__code__.co_varnames)
-            # del arg[0] # remove the self argument
-            arg = str(arg)
-            if len(arg)-2:
-                self._ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
-            else:
-                self._ConsoleOutput("No arguments required")
-        except KeyError: # not in the dictionary
-            self._ConsoleOutput("Unknown command '%s'" % str(index), (1,0,0,1))
-        return None
-    
-    def help(self):
-        '''
-        Shows a list of available commands
-        '''
-        self._ConsoleOutput("List of available commands: ", color = (0.243,0.941,1,1))
-        for i in self._command_dictionary:
-            self._ConsoleOutput("- "+str(i))
-        self._ConsoleOutput(" ")
-        self._ConsoleOutput("Use usage(command) for more details on a specific command")
-        return None
-
-    def credits(self):
-        self._ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project.")
-        self._ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
-        self._ConsoleOutput("Download the panda3d engine at panda3d.org")
-
-    def showLicense(self):
-        with open(os.path.join(PYMAINDIR,'license.txt')) as l:
-            license = l.read()
-        self._ConsoleOutput(license, color = (1, 0.9, 0.7, 1))
-
 def find_all_str(sample, string):
     n = len(sample)
     poslist = []
@@ -428,3 +350,4 @@ def find_all_str(sample, string):
             poslist.append(i)
         else:pass
     return poslist
+

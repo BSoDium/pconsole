@@ -8,10 +8,12 @@ pconsole/cmd_command.py
 pconsole/config.json
 pconsole/console.py
 pconsole/defaults.py
+pconsole/error.py
 pconsole/file.py
 pconsole/license.txt
 pconsole/lines.py
 pconsole/process.py
+pconsole/utils.py
 pconsole/version.py
 pconsole/win_convert.py
 pconsole/win_symbols.json

@@ -1,2 +1,2 @@
-__version__ = '0.4.1'
-_changelog = 'fixed broken pip update-checking protocol. Now using requests package and pypi json data'
+__version__ = '0.5.0'
+_changelog = 'Improved code clarity and documentation. Fixed several bugs in the input processing routine.'
