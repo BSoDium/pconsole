@@ -2,9 +2,9 @@
 
 try:
     from direct.gui.OnscreenImage import OnscreenImage
-    from direct.gui.DirectGui import *
+    from direct.gui.DirectGui import DirectButton, DirectEntry
     from direct.gui.OnscreenText import OnscreenText
-    from direct.showbase.ShowBase import DirectObject, ShowBase
+    from direct.showbase.ShowBase import DirectObject
     from panda3d.core import Filename, NodePath, CardMaker, TransparencyAttrib, TextNode, Vec4
     import panda3d
 except ModuleNotFoundError:
@@ -22,6 +22,7 @@ import requests
 from .process import py_process, csl_process, cmd_process
 from .version import __version__ as version
 from .file import BufferFile
+from .error import os_error, command_error
 from .lines import redistribute, displace, OnscreenLine
 from .win_convert import convert
 from .defaults import __blacklist__  # change to module names when defined
@@ -40,16 +41,16 @@ class Console:
     def __init__(self):
         '''Main constructor.'''
         # prevent overlapping issues
-        base.a2dBottomLeft.set_bin('gui-popup', 0)
+        base.a2dBottomLeft.set_bin('gui-popup', 0) # base is global and therefore does not need to be imported
         sys.stdout = BufferFile(self._ConsoleOutput)
-        sys.stderr = BufferFile(self._os_error)
+        sys.stderr = BufferFile(os_error)
         self._res = (base.win.getXSize(), base.win.getYSize(),
                     base.getAspectRatio())
         return None
 
     
     def create(self, command_dictionary, event: str = "f1", app=None):
-        '''Load the settings and set up console Gui elements
+        '''Load the settings and set up console Gui elements.
         
         - param `command_dictionary`:     User-specific commands
         - param str `event`:                   (Optional) key pressed to toggle console
@@ -185,7 +186,7 @@ class Console:
         return None
 
     def __load_console_entry(self):  # -1.76, 0, -0.97
-        '''Load console DirectEntry element'''
+        '''Load console DirectEntry element.'''
         self.entry = DirectEntry(scale=self._textscale,
                                     frameColor=(0.05, 0.05, 0.05, 0),
                                     text_fg=(1, 1, 1, 1),
@@ -201,7 +202,7 @@ class Console:
         return None
 
     def __toggle(self):
-        '''Toggle console display'''
+        '''Toggle console display.'''
         if self._hidden:
             self._gui.show()
         else:
@@ -210,6 +211,9 @@ class Console:
         return None
 
     def __process(self, data):
+        """
+        Process the data provided by the user and execute the corresponding command.
+        """
 
         if len(data) == 0: return None
         # reset scroll
@@ -226,28 +230,12 @@ class Console:
 
 
         if self._indicator['text'] == 'pyt> ':
-            py_process(data, self.app, self._os_error)
+            py_process(data, self.app, self._ConsoleOutput)
         elif self._indicator['text'] == 'csl> ':
-            csl_process(data, self._ConsoleOutput, self._command_dictionary, self._command_error)
+            csl_process(data, self._ConsoleOutput, self._command_dictionary)
         elif self._indicator['text'] == 'os$> ':
-            cmd_process(data, self._ConsoleOutput, self._os_error)
+            cmd_process(data, self._ConsoleOutput)
         return None
-
-    def _os_error(self, report):
-        """
-        Display os terminal report 
-        """
-        if report == None: return
-        elif type(report) is not str: report = str(report)
-        else:
-            sys.__stderr__.write(report)
-            self._ConsoleOutput(report, (1, 0, 0, 1))
-        return
-
-    def _command_error(self, report):
-        self._ConsoleOutput("Pconsole (most recent call last):", (1, 0, 0, 1))
-        self._ConsoleOutput("CommandError: command '" +
-                            str(report)+"' is not defined", (1, 0, 0, 1))
 
     def _ConsoleOutput(self, output, color: Vec4 = Vec4(1, 1, 1, 1), mode: str = 'add', CMD_type=False, encoding='utf-8'):
         redistribute(self._savedlines, self._maxsize,
