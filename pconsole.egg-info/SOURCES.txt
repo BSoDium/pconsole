@@ -3,9 +3,6 @@ README.md
 setup.cfg
 setup.py
 test.jpeg
-pconsole/Hermit-Regular.otf
-pconsole/TerminusTTF-4.47.0.ttf
-pconsole/TerminusTTF-Bold.ttf
 pconsole/__init__.py
 pconsole/cmd_command.py
 pconsole/config.json
@@ -14,6 +11,7 @@ pconsole/defaults.py
 pconsole/file.py
 pconsole/license.txt
 pconsole/lines.py
+pconsole/process.py
 pconsole/version.py
 pconsole/win_convert.py
 pconsole/win_symbols.json
@@ -23,3 +21,5 @@ pconsole.egg-info/dependency_links.txt
 pconsole.egg-info/requires.txt
 pconsole.egg-info/top_level.txt
 pconsole.egg-info/zip-safe
+pconsole/fonts/TerminusTTF-4.47.0.ttf
+pconsole/fonts/TerminusTTF-Bold.ttf

@@ -17,8 +17,9 @@ import pathlib
 import json
 import subprocess
 import threading
+from direct import showbase
 import requests
-from .cmd_command import Command
+from .process import py_process, csl_process, cmd_process
 from .version import __version__ as version
 from .file import BufferFile
 from .lines import redistribute, displace, OnscreenLine
@@ -30,28 +31,42 @@ PYMAINDIR = str(pathlib.Path(temp).resolve())
 MAINDIR = Filename.from_os_specific(PYMAINDIR).getFullpath()  
 
 
+
+
 class Console:
+    """
+    Constructs and returns a new :class:`Console`.
+    """
     def __init__(self):
+        '''Main constructor.'''
         # prevent overlapping issues
         base.a2dBottomLeft.set_bin('gui-popup', 0)
         sys.stdout = BufferFile(self._ConsoleOutput)
-        sys.stderr = BufferFile(self._CMDError)
-        self.res = (base.win.getXSize(), base.win.getYSize(),
+        sys.stderr = BufferFile(self._os_error)
+        self._res = (base.win.getXSize(), base.win.getYSize(),
                     base.getAspectRatio())
         return None
 
-    def create(self, CommandDictionary, event: str = "f1", app=None):
+    
+    def create(self, command_dictionary, event: str = "f1", app=None):
+        '''Load the settings and set up console Gui elements
+        
+        - param `command_dictionary`:     User-specific commands
+        - param str `event`:                   (Optional) key pressed to toggle console
+        - param <generic class> `app`:         User-specific main application, referred to with keyword `main` in console'''
+
         # dictionnaries and commands
         defaults = {"usage": self.usage,
                     "help": self.help,
                     "credits": self.credits,
                     "license": self.showLicense}
-        # copy for further use in other methods
-        self.CommandDictionary = {**CommandDictionary, **defaults}
-        self.consoles = {
+    
+        # append default commands to command dictionnary
+        self._command_dictionary = {**command_dictionary, **defaults}
+        self._consoles = {
             "csl> ": "Pconsole " + version,
             "pyt> ": sys.version[:5]+" runtime python console",
-            "cmd> ": "OS commandline"
+            "os$> ": "OS commandline"
         }
 
         # settings
@@ -68,20 +83,21 @@ class Console:
         if self._framesize[0] < self._minframesize[0] or self._framesize[1] < self._minframesize[1]:
             self._framesize = self._minframesize
         # modified framesize according to screen res (most screens aren't square)
-        self._Resframesize = [self._framesize[0]
-            * self.res[2], self._framesize[1]]
-        self.hidden = False
+        self._resframesize = [self._framesize[0]
+            * self._res[2], self._framesize[1]]
+        self._hidden = False
         self._textscale = data['textscale']
         self._textres = data['textres']
         self._doresizeroutine = data['doresizeroutine']
         self._doscrollingroutine = data['doscrollingroutine']
         self._font = loader.loadFont(os.path.join(MAINDIR, data['fontpath']))
         self._font.setPixelsPerUnit(self._textres)
-        self._callBackIndex = -1
-        self._scrollingIndex = 0  # start in non-scrolled state
-        self._InputLines = []
-        # this list will contain the recorded lines (for scrolling and resizing purpose)
-        self._SavedLines = []
+
+        # scrolling
+        self._callbackindex = -1
+        self._scrollingindex = 0  # start in non-scrolled state
+        self._inputlines = [] # this list will contain the recorded lines (for scrolling and resizing purpose)
+        self._savedlines = []
         # resizing
         self._recomputeFrame()
 
@@ -97,9 +113,9 @@ class Console:
         self._background.setTransparency(TransparencyAttrib.MAlpha)\
         # instead of creating the background using the current resolution, we use scaling to adapt its size whenever the user changes the window's size
         self._background.setScale(
-            self._Resframesize[1]/self._framesize[1], 1, self._Resframesize[0]/self._framesize[0])
+            self._resframesize[1]/self._framesize[1], 1, self._resframesize[0]/self._framesize[0])
 
-        self._LinesOnDisplay = [OnscreenLine(text='',
+        self._visible_lines = [OnscreenLine(text='',
                                             pos=(0.01, 0.12 + x *
                                                  self._textscale),
                                             scale=self._textscale,
@@ -118,14 +134,14 @@ class Console:
                                       text_fg=(1, 1, 1, 1),
                                       text_align=TextNode.ALeft,
                                       parent=self._gui)
-        self._info = OnscreenText(text='targeting: ' + self.consoles[self._indicator['text']],
+        self._info = OnscreenText(text='targeting: ' + self._consoles[self._indicator['text']],
                                 pos=(0.01, 0.01),
                                 scale=self._textscale*0.95,
                                 align=TextNode.ALeft,
                                 fg=(0.7, 0.9, 0.9, 1),
                                 parent=self._gui,
                                 font=self._font)
-        self._loadConsoleEntry()
+        self.__load_console_entry()
         self._update_res()
 
         # head
@@ -144,7 +160,7 @@ class Console:
             self._ConsoleOutput(
                 'failed to configure %s key as toggling event, loading default (f1)' % event, Vec4(0.8, 0.8, 1, 1))
             event = 'f1'  # default if conflict with f2
-        self._eventhandler.accept(event, self._toggle)
+        self._eventhandler.accept(event, self.__toggle)
         self._eventhandler.accept('arrow_up', self._callBack, [True])
         self._eventhandler.accept('arrow_down', self._callBack, [False])
         self._eventhandler.accept('f2', self._switch_adr)
@@ -159,7 +175,7 @@ class Console:
             self._ConsoleOutput(" ")
             self._ConsoleOutput(
                 "Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
-        if not self._disponstartup: self._toggle()  # initialize as hidden
+        if not self._disponstartup: self.__toggle()  # initialize as hidden
 
         # check for updates in a separate thread
         thread = threading.Thread(target=self._versioncheck, args=())
@@ -168,13 +184,14 @@ class Console:
 
         return None
 
-    def _loadConsoleEntry(self):  # -1.76, 0, -0.97
+    def __load_console_entry(self):  # -1.76, 0, -0.97
+        '''Load console DirectEntry element'''
         self.entry = DirectEntry(scale=self._textscale,
                                     frameColor=(0.05, 0.05, 0.05, 0),
                                     text_fg=(1, 1, 1, 1),
                                     pos=(0.1, 0, 0.05),
                                     overflow=1,
-                                    command=self._ConvertToFunction,
+                                    command=self.__process,
                                     initialText="",
                                     numLines=1,
                                     focus=True,
@@ -183,164 +200,43 @@ class Console:
                                     entryFont=self._font)
         return None
 
-    def _toggle(self):
-        if self.hidden:
+    def __toggle(self):
+        '''Toggle console display'''
+        if self._hidden:
             self._gui.show()
         else:
             self._gui.hide()
-        self.hidden = not(self.hidden)
+        self._hidden = not(self._hidden)
         return None
 
-    def _ConvertToFunction(self, data):
+    def __process(self, data):
 
         if len(data) == 0: return None
-        # callback stuff
-        self._callBackIndex = -1
-        self._InputLines.append(data)
+        # reset scroll
+        self._callbackindex = -1
+        # save to scrolling buffer
+        self._inputlines.append(data)
 
-        # gui
+        # reset console entry
         self.entry.destroy()
-        self._loadConsoleEntry()
+        self.__load_console_entry()
+        # 
         self._ConsoleOutput(" ")
         self._ConsoleOutput(self._indicator['text']+data)
 
-        def pyt_process():
-            nonlocal data, self
-            main = self.app  # defined so the user can access it from the commandline
-            data = data.strip()
-            forb = list(__blacklist__.keys())
-            for a in forb:
-                k = len(a)
-                if data[:k] == a:
-                    self._CMDError(
-                        'Sorry, this command has been disabled internally\nReason:')
-                    self._CMDError(__blacklist__[a])
-                    return None
-            try:
-                exec(data.strip())
-            except Exception:
-                self._CMDError(traceback.format_exc())
-            except SystemExit:
-                pass
-            return None
-
-        def csl_process():
-            nonlocal data, self
-            ind = data.find('(')
-            Buffer = []
-            if ind <= 0:  # no occurence
-                Buffer.append(data)
-            else:
-                Buffer.append(data[0:ind])  # indentify keyword
-                data = data[ind:len(data)]  # strip the string as we move along
-                # closing parenthesis syntax stuff
-                if not(data[0] == '(' and data[len(data)-1] == ')'):
-                    self._ConsoleOutput(
-                        'Missing parenthesis ")" in "' + Buffer[0] + data + '"', (1, 0, 0, 1))
-                    return None
-                else: pass
-
-                data = data[1:len(data)-1]  # cut these useless '()' out
-
-                left = find_all_str('(', data)
-                right = find_all_str(')', data)
-                if len(left) != len(right):  # unmatched parethesis error
-                    self._ConsoleOutput(
-                        'SyntaxError: unmatched parenthesis found in expression', (1, 0, 0, 1))
-                    return None
-                # we need to split the list according to the parenthesis structure
-
-                nl = len(left)
-                for i in range(nl):
-                    temp = data[left[i]:right[i]+1].replace(',', '|')
-                    # the spaces compensate the index gap
-                    temp = ' '+temp[1:len(temp)-1]+' '
-                    data = data[:left[i]] + temp + data[right[i]+1:]
-
-                Buffer += data.split(',')  # identify arguments
-                for i in range(len(Buffer)):
-                    Buffer[i] = Buffer[i].strip()
-                    if '|' in Buffer[i]:
-                        Buffer[i] = Buffer[i].split('|')  # internal tuples
-                        for j in range(len(Buffer[i])):
-                            Buffer[i][j] = Buffer[i][j].strip()
-                # now the string has been converted into a readable list
-
-                for j in range(1, len(Buffer)):
-                    try:
-                        if str(int(Buffer[j])) == Buffer[j]:
-                            Buffer[j] = int(Buffer[j])
-                    except:
-                        pass
-                    try:
-                        if str(float(Buffer[j])) == Buffer[j]:
-                            Buffer[j] = float(Buffer[j])
-                    except ValueError:
-                        if str(Buffer[j]) != 'None':
-                            Buffer[j] = str(Buffer[j])
-                        else:
-                            Buffer[j] = None
-                    except TypeError:
-                        if type(Buffer[j]) is list:
-                            # a recursive algorithm might have been a better option
-                            for t in range(len(Buffer[j])):
-                                try:
-                                    if str(int(Buffer[j][t])) == Buffer[j][t]:
-                                        Buffer[j][t] = int(Buffer[j][t])
-                                except ValueError:
-                                    pass
-                                try:
-                                    if str(float(Buffer[j][t])) == Buffer[j][t]:
-                                        Buffer[j][t] = float(Buffer[j][t])
-                                except ValueError:
-                                    if str(Buffer[j][t]) != 'None':
-                                        Buffer[j][t] = str(Buffer[j][t])
-                                    else:
-                                        Buffer[j][t] = None
-                            Buffer[j] = tuple(Buffer[j])
-
-                    # formating is done, let's head over to the execution
-            try:
-                ChosenCommand = self.CommandDictionary[Buffer[0]]
-                # several arguments have been provided
-                if len(Buffer)-1 and Buffer[1] != '':
-                    try:
-                        ChosenCommand(*Buffer[1:])
-                        return None
-                    except TypeError:
-                        self._ConsoleOutput(
-                            "Wrong arguments provided", (1, 0, 0, 1))
-                        return None
-                else:
-                    try:
-                        ChosenCommand()
-                        return None
-                    except TypeError:
-                        self._ConsoleOutput(
-                            'This command requires (at least) one argument', (1, 0, 0, 1))
-                        return None
-            except:
-                self._CommandError(Buffer[0])
-
-        def cmd_process():
-            nonlocal data, self
-            command = Command(data.strip())
-            try:
-                output = command.run(timeout=1)
-                self._ConsoleOutput(output[0])
-                self._CMDError(output[1])
-            except:
-                self._CMDError(traceback.format_exc())
 
         if self._indicator['text'] == 'pyt> ':
-            pyt_process()
+            py_process(data, self.app, self._os_error)
         elif self._indicator['text'] == 'csl> ':
-            csl_process()
-        elif self._indicator['text'] == 'cmd> ':
-            cmd_process()
+            csl_process(data, self._ConsoleOutput, self._command_dictionary, self._command_error)
+        elif self._indicator['text'] == 'os$> ':
+            cmd_process(data, self._ConsoleOutput, self._os_error)
         return None
 
-    def _CMDError(self, report):
+    def _os_error(self, report):
+        """
+        Display os terminal report 
+        """
         if report == None: return
         elif type(report) is not str: report = str(report)
         else:
@@ -348,14 +244,14 @@ class Console:
             self._ConsoleOutput(report, (1, 0, 0, 1))
         return
 
-    def _CommandError(self, report):
+    def _command_error(self, report):
         self._ConsoleOutput("Pconsole (most recent call last):", (1, 0, 0, 1))
         self._ConsoleOutput("CommandError: command '" +
                             str(report)+"' is not defined", (1, 0, 0, 1))
 
     def _ConsoleOutput(self, output, color: Vec4 = Vec4(1, 1, 1, 1), mode: str = 'add', CMD_type=False, encoding='utf-8'):
-        redistribute(self._SavedLines, self._maxsize,
-                     self._maxlines, self._LinesOnDisplay)
+        redistribute(self._savedlines, self._maxsize,
+                     self._maxlines, self._visible_lines)
 
         keyword = "\n"
         if output == None: return
@@ -368,83 +264,83 @@ class Console:
             for i in range(0, len(x), self._maxsize)] for x in text]
         if mode == 'add':
             for discretized in text:
-                self._SavedLines.append((''.join(discretized), color))
+                self._savedlines.append((''.join(discretized), color))
                 for i in range(len(discretized)):  # for each line
                     for x in range(self._maxlines-1, 0, -1):
-                        self._LinesOnDisplay[x].textnode.text = self._LinesOnDisplay[x-1].textnode.text
-                        self._LinesOnDisplay[x].textnode.fg = self._LinesOnDisplay[x-1].textnode.fg
-                        self._LinesOnDisplay[x].lineIndex = self._LinesOnDisplay[x-1].lineIndex
-                        self._LinesOnDisplay[x].charInterval = self._LinesOnDisplay[x-1].charInterval
-                    self._LinesOnDisplay[0].textnode.text = discretized[i]
-                    self._LinesOnDisplay[0].textnode.fg = color
-                    self._LinesOnDisplay[0].lineIndex = len(
-                        self._SavedLines)-1  # save the line number
+                        self._visible_lines[x].textnode.text = self._visible_lines[x-1].textnode.text
+                        self._visible_lines[x].textnode.fg = self._visible_lines[x-1].textnode.fg
+                        self._visible_lines[x].lineIndex = self._visible_lines[x-1].lineIndex
+                        self._visible_lines[x].charInterval = self._visible_lines[x-1].charInterval
+                    self._visible_lines[0].textnode.text = discretized[i]
+                    self._visible_lines[0].textnode.fg = color
+                    self._visible_lines[0].lineIndex = len(
+                        self._savedlines)-1  # save the line number
                     previous = ''
                     # sum up all the previous chars
                     for t in range(i): previous += discretized[t]
-                    self._LinesOnDisplay[0].charInterval = [
+                    self._visible_lines[0].charInterval = [
                         len(previous), len(previous)+len(discretized[i])-1]
         elif mode == 'edit':
             # save the line, might not work properly
-            self._SavedLines[-1] = (output, color)
+            self._savedlines[-1] = (output, color)
             for discretized in text:
                 n = len(discretized)
                 for i in range(n):
-                    self._LinesOnDisplay[i].textnode.text = discretized[n - i - 1]
-                    self._LinesOnDisplay[i].textnode.fg = color
-                    self._LinesOnDisplay[i].lineIndex = len(
-                        self._SavedLines)-1  # charinterval not handled
+                    self._visible_lines[i].textnode.text = discretized[n - i - 1]
+                    self._visible_lines[i].textnode.fg = color
+                    self._visible_lines[i].lineIndex = len(
+                        self._savedlines)-1  # charinterval not handled
         return None
 
     def _scroll(self, direction: bool):
         sign = (-1)**int(direction+1)  # -1 or 1 depending on the boolean
-        self._scrollingIndex = displace(
-            self._SavedLines, self._maxsize, self._maxlines, self._LinesOnDisplay, self._scrollingIndex, sign)
+        self._scrollingindex = displace(
+            self._savedlines, self._maxsize, self._maxlines, self._visible_lines, self._scrollingindex, sign)
 
     def _switch_adr(self):
         current = self._indicator['text']
-        n = list(self.consoles.keys()).index(current)
-        if n == len(self.consoles.keys())-1:
+        n = list(self._consoles.keys()).index(current)
+        if n == len(self._consoles.keys())-1:
             n = 0
         else:
             n += 1
-        self._indicator['text'] = list(self.consoles.keys())[n]
+        self._indicator['text'] = list(self._consoles.keys())[n]
         self._info.text = "targeting: " + \
-            self.consoles[self._indicator['text']]
+            self._consoles[self._indicator['text']]
 
     def _update_res(self):
-        self.res = (base.win.getXSize(), base.win.getYSize(),
+        self._res = (base.win.getXSize(), base.win.getYSize(),
                     base.getAspectRatio())  # update res
         # update frame stuff
         # if self._maxsize < 10: return # we want the indicator to always stay inside the background frame
-        self._Resframesize = [self._framesize[0]
-            * self.res[2], self._framesize[1]]
+        self._resframesize = [self._framesize[0]
+            * self._res[2], self._framesize[1]]
         self._recomputeFrame()
         self._background.setScale(
-            self._Resframesize[0]/self._framesize[0], 1, self._Resframesize[1]/self._framesize[1])
+            self._resframesize[0]/self._framesize[0], 1, self._resframesize[1]/self._framesize[1])
         # update text disposition
-        redistribute(self._SavedLines, self._maxsize,
-                     self._maxlines, self._LinesOnDisplay)
-        self._scrollingIndex = 0  # reset scrolling
+        redistribute(self._savedlines, self._maxsize,
+                     self._maxlines, self._visible_lines)
+        self._scrollingindex = 0  # reset scrolling
         self.entry['width'] = self._maxsize
         # debug
         if self._verbose: print('updated res to %s - x,y,ratio' % str(
             (base.win.getXSize(), base.win.getYSize(), base.getAspectRatio())))
 
     def _callBack(self, key: bool):
-        invertedInput = self._InputLines[::-1]
+        invertedInput = self._inputlines[::-1]
         if key:  # up key pressed
             try:  # avoid out of range errors
-                if self._callBackIndex < len(invertedInput):
-                    self._callBackIndex += 1
-                    self.entry.enterText(invertedInput[self._callBackIndex])
+                if self._callbackindex < len(invertedInput):
+                    self._callbackindex += 1
+                    self.entry.enterText(invertedInput[self._callbackindex])
             except: pass
         else:
             try:
-                if self._callBackIndex >= 0:
-                    self._callBackIndex -= 1
+                if self._callbackindex >= 0:
+                    self._callbackindex -= 1
                     self.entry.enterText(
-                        ([''] + invertedInput)[self._callBackIndex])
+                        ([''] + invertedInput)[self._callbackindex])
             except: pass
 
     def _textToLine(self, text):
@@ -463,8 +359,8 @@ class Console:
             return bounds
         bounds = getfontbounds()
         width = (bounds[1][0] - bounds[0][0])/10
-        self._maxsize = int(self._Resframesize[0]/width)
-        self._maxlines = int((self._Resframesize[1]-0.12)/self._textscale) + 1
+        self._maxsize = int(self._resframesize[0]/width)
+        self._maxlines = int((self._resframesize[1]-0.12)/self._textscale) + 1
 
     def _versioncheck(self):
         # version_check
@@ -493,7 +389,7 @@ class Console:
         Provides help concerning a given command
         '''
         try:
-            i = self.CommandDictionary[index]
+            i = self._command_dictionary[index]
             self._ConsoleOutput("Help concerning command '%s':" % str(index), color = (0.243,0.941,1,1))
             self._ConsoleOutput("- associated function name is '%s'" % str(i.__name__))
             self._ConsoleOutput("- Documentation provided: ")
@@ -520,7 +416,7 @@ class Console:
         Shows a list of available commands
         '''
         self._ConsoleOutput("List of available commands: ", color = (0.243,0.941,1,1))
-        for i in self.CommandDictionary:
+        for i in self._command_dictionary:
             self._ConsoleOutput("- "+str(i))
         self._ConsoleOutput(" ")
         self._ConsoleOutput("Use usage(command) for more details on a specific command")

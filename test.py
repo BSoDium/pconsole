@@ -1,4 +1,4 @@
-from pconsole import Console
+import pconsole
 from panda3d.core import Filename
 from direct.showbase.ShowBase import ShowBase
 from direct.gui.OnscreenImage import OnscreenImage
@@ -7,7 +7,7 @@ import os,sys
 
 MAINDIR = Filename.from_os_specific(os.path.abspath(sys.path[0])).getFullpath()
 
-class testApp(ShowBase):
+class TestApp(ShowBase):
     def __init__(self):
         ShowBase.__init__(self)
         self.disable_mouse()
@@ -16,11 +16,11 @@ class testApp(ShowBase):
         self.mire.hide()
         self.is_shown = False
         
-        commandDic = {
+        command_dic = {
             "toggleImage":self.toggleImage
         }
-        self.commandline = Console()
-        self.commandline.create(commandDic, app = self, event = 'f1')
+        self.commandline = pconsole.Console()
+        self.commandline.create(command_dic, app = self, event = 'f1')
         self.task_mgr.add(self.update, "updatingTask")
         
         
@@ -38,7 +38,7 @@ def testfunc():
     '''docstring goes here'''
     pass
 
-App = testApp()
+App = TestApp()
 try: App.run()
 except SystemExit:
     pass

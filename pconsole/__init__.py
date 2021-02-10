@@ -1,3 +1,20 @@
+"""
+## Panda3D console
+A tiny and easy-to-use runtime console for panda3d-powered apps.
+### Initialize console
+>>> commandDic = {"func1_string":func1,
+                    "func2_string":func2}
+>>> key = "t" # by default, pconsole will use "f1"
+>>> myConsole = pconsole.Console()
+>>> myConsole.create(commandDic, event = key, app = myApp)
+
+### Default commands
+- `help` : list all available commands
+- `usage` : help on a specific command (requires docstring)
+- `credits` : show credits
+- `license` : display license file 
+"""
+
 from .console import Console
 from .version import __version__ as v
 

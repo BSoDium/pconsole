@@ -4,7 +4,7 @@
     "textres" : 100,
     "bg_transparency" : 0.95,
     "disponstartup" : false,
-    "fontpath" : "TerminusTTF-Bold.ttf",
+    "fontpath" : "fonts/TerminusTTF-4.47.0.ttf",
     "toggleverbose" : false,
     "doresizeroutine" : true,
     "doscrollingroutine" : false,
