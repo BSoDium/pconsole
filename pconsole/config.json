@@ -1,10 +1,11 @@
 {
     "framesize" : [1 , 2],
     "textscale" : 0.04,
-    "textres" : 100,
+    "textres" : 40,
     "bg_transparency" : 0.95,
+    "bg_color" : [0.0911, 0.1147, 0.1382],
     "disponstartup" : false,
-    "fontpath" : "fonts/TerminusTTF-4.47.0.ttf",
+    "fontpath" : "fonts/VT323-Regular.ttf", 
     "toggleverbose" : false,
     "doresizeroutine" : true,
     "doscrollingroutine" : false,

@@ -1,4 +1,5 @@
 import requests
+import inspect
 import pathlib
 import os
 from panda3d.core import Vec4
@@ -70,29 +71,28 @@ class Utils:
             self._ConsoleOutput("This version of pconsole is currently up-to-date", Vec4(0.8,0.7,0,1))
         
         
-    def usage(self,index):
+    def usage(self, command_name):
         '''
         Provides help concerning a given command
         '''
         try:
-            i = self._command_dictionary[index]
-            self._ConsoleOutput("Help concerning command '%s':" % str(index), color = (0.243,0.941,1,1))
+            i = self._command_dictionary[command_name]
+            self._ConsoleOutput("Help concerning command '%s':" % str(command_name), color = (0.243,0.941,1,1))
             self._ConsoleOutput("- associated function name is '%s'" % str(i.__name__))
             self._ConsoleOutput("- Documentation provided: ")
             doc = self._text_to_line(str(i.__doc__))
             if not doc == str(None):
-                self._ConsoleOutput(doc.strip())
+                self._ConsoleOutput(doc.strip(), (0.7, 0.9, 0.9, 1))
             else:
-                self._ConsoleOutput("No docstring found")
+                self._ConsoleOutput("No docstring found", (1, 0, 0, 1))
             self._ConsoleOutput("- Known arguments: ")
             
-            arg = list(i.__code__.co_varnames)
-            
-            arg = str(arg)
-            if len(arg)-2:
+            arg = list(str(inspect.signature(i))[1:-1].split(",")) 
+            arg = ', '.join(arg)
+            if len(arg) != 0:
                 self._ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
             else:
-                self._ConsoleOutput("No arguments required")
+                self._ConsoleOutput("No arguments required", (0.1, 1, 0.1, 1))
         except KeyError: # not in the dictionary
             self._ConsoleOutput("Unknown command '%s'" % str(index), (1,0,0,1))
         return None

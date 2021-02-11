@@ -21,6 +21,6 @@ setup(name = 'pconsole',
         'panda3d',
         'importlib',
         'pathlib',
-        'requests'
+        'requests',
       ]
 )

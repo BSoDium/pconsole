@@ -1,14 +1,15 @@
+from types import new_class
 from typing import List
 from .defaults import __blacklist__
 import traceback
 from .cmd_command import Command
 from .error import parenthesis_error, command_error, os_error, syntax_error, args_error, ParenthesisError
 
-def py_process(data, app, _output):
+def py_process(data : str, _output : callable, app):
     """
     Process the provided data and send it to the Python interpreter.
     """
-    _main = app  # defined so the user can access it from the commandline
+    main = app  # defined so the user can access it from the commandline
     data = data.strip()
     forb = list(__blacklist__.keys())
     for a in forb:
@@ -21,12 +22,10 @@ def py_process(data, app, _output):
         exec(data.strip())
     except Exception:
         os_error(traceback.format_exc(), _output)
-    except SystemExit:
-        pass
     return None
 
 
-def csl_process(data, _output, _command_dictionary) -> bool:
+def csl_process(data : str, _output : callable, _command_dictionary : dict) -> bool:
     """
     Process the provided data and execute the associated pconsole command.
     """
