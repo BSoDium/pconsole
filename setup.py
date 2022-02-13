@@ -16,11 +16,11 @@ setup(name = 'pconsole',
       long_description = desc,
       long_description_content_type = 'text/markdown',
       include_package_data = True,
-      platforms=['Windows', 'Linux', 'OSX'],
+      platforms = ['Windows', 'Linux', 'OSX'],
       install_requires = [
         'panda3d',
         'importlib',
         'pathlib',
-        'requests',
+        'requests'
       ]
 )

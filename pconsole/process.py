@@ -1,5 +1,3 @@
-from types import new_class
-from typing import List
 from .defaults import __blacklist__
 import traceback
 from .cmd_command import Command
@@ -19,7 +17,7 @@ def py_process(data : str, _output : callable, app):
             os_error(__blacklist__[a], _output)
             return None
     try:
-        exec(data.strip())
+        exec(data)
     except Exception:
         os_error(traceback.format_exc(), _output)
     return None
@@ -50,6 +48,7 @@ def csl_process(data : str, _output : callable, _command_dictionary : dict) -> b
                 del(_balance[-1])
     if len(_balance) != 0:
         parenthesis_error(_output)
+        return 1
 
     # recover main command
     _command_end_index = data.find("(")
@@ -61,7 +60,7 @@ def csl_process(data : str, _output : callable, _command_dictionary : dict) -> b
     try:
         _executable = _command_dictionary[_command]
     except KeyError:
-        command_error(_command, _output)
+        command_error(_output, _command)
         return 1
 
     # identify arguments
@@ -69,7 +68,7 @@ def csl_process(data : str, _output : callable, _command_dictionary : dict) -> b
 
     # check if last char is a parenthesis
     if len(_args) and _args[-1] != ')':
-        syntax_error(_command, _output)
+        syntax_error(_output, _command)
         return 1
     
     # process arguments

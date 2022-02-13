@@ -90,7 +90,7 @@ class Utils:
             arg = list(str(inspect.signature(i))[1:-1].split(",")) 
             arg = ', '.join(arg)
             if len(arg) != 0:
-                self._ConsoleOutput(str(arg)[1:len(str(arg))-1]) # remove brackets
+                self._ConsoleOutput(str(arg)[:len(str(arg))])
             else:
                 self._ConsoleOutput("No arguments required", (0.1, 1, 0.1, 1))
         except KeyError: # not in the dictionary
@@ -110,7 +110,7 @@ class Utils:
 
     def credits(self):
         self._ConsoleOutput("Thanks to rdb, darthrigg, and the panda3d community for supporting this project.")
-        self._ConsoleOutput("This program was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
+        self._ConsoleOutput("Pconsole was created by l3alr0g. See https://github.com/l3alr0g/pconsole for more information.")
         self._ConsoleOutput("Download the panda3d engine at panda3d.org")
 
     def show_license(self):

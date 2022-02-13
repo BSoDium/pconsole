@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema#",
+  "title" : "Pconsole Settings Profile Schema",
+  "type" : "object",
+  "properties": {
+      "framesize" : {
+          "description" : "Size of the frame on startup",
+          "markdownDescription" : "The size of the console frame on startup : [2, 2] covers the whole window, [1, 2] covers half of it",
+          "type": "array"
+      },
+      "textscale" : {
+        "description" : "",
+        "type" : ""
+      },
+      "textres" : {
+        "description" : "",
+        "type" : ""
+      },
+      "textspacing" : {
+        "description" : "",
+        "type" : ""
+      },
+      "bg_transparency" : {
+        "description" : "",
+        "type" : ""
+      },
+      "bg_color" : {
+        "description" : "",
+        "type" : ""
+      },
+      "disponstartup" : {
+        "description" : "",
+        "type" : ""
+      },
+      "fontpath" : {
+        "description" : "",
+        "type" : ""
+      },
+      "toggleverbose" : {
+        "description" : "",
+        "type" : ""
+      },
+      "doresizeroutine" : {
+        "description" : "",
+        "type" : ""
+      },
+      "doscrollingroutine" : {
+        "description" : "",
+        "type" : ""
+      },
+      "scrolldelta" : {
+        "description" : "",
+        "type" : ""
+      },
+      "checkforupdates" : {
+        "description" : "",
+        "type" : ""
+      },
+      "anchor" : {
+        "description" : "",
+        "type" : ""
+      }
+  }
+  
+}

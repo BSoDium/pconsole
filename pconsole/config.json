@@ -1,14 +1,18 @@
 {
+    "$schema": "./schema_pconsole.json",
+
     "framesize" : [1 , 2],
-    "textscale" : 0.04,
-    "textres" : 40,
+    "textscale" : 0.045,
+    "textres" : 50,
+    "textspacing" : [0 , 0.25],
     "bg_transparency" : 0.95,
     "bg_color" : [0.0911, 0.1147, 0.1382],
     "disponstartup" : false,
     "fontpath" : "fonts/VT323-Regular.ttf", 
     "toggleverbose" : false,
     "doresizeroutine" : true,
-    "doscrollingroutine" : false,
+    "doscrollingroutine" : true,
+    "scrolldelta" : 1,
     "checkforupdates" : true,
     "anchor" : "bottomleft"
 }

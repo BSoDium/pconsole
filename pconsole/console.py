@@ -37,7 +37,7 @@ class Console:
         '''Main constructor.'''
         # prevent overlapping issues
         base.a2dBottomLeft.set_bin('gui-popup', 0) # base is global and therefore does not need to be imported
-        sys.stdout = BufferFile(self._ConsoleOutput)
+        sys.stdout = BufferFile(self.ConsoleOutput)
         sys.stderr = BufferFile(os_error)
         self._res = (base.win.getXSize(), base.win.getYSize(),
                     base.getAspectRatio())
@@ -52,7 +52,7 @@ class Console:
         - param <generic class> `app`:         User-specific main application, referred to with keyword `main` in console'''
 
         # dictionnaries and commands
-        self._utils = Utils(self._ConsoleOutput) 
+        self._utils = Utils(self.ConsoleOutput) 
         defaults = {"usage": self._utils.usage,
                     "help": self._utils.help,
                     "credits": self._utils.credits,
@@ -85,6 +85,7 @@ class Console:
             "textscale" : data['textscale'],
             "textres" : data['textres'],
             "doresizeroutine" : data['doresizeroutine'],
+            "scrolldelta" : data['scrolldelta'],
             "doscrollingroutine" : data['doscrollingroutine']
         }
         self._utils.check_version = data['checkforupdates']
@@ -102,7 +103,7 @@ class Console:
         self._inputlines = [] # this list contains the recorded lines (for scrolling and resizing purpose)
         self._savedlines = []
         # text spacing
-        self._spacing = (0 , 0.1) # percentage of textsize (width, height)
+        self._spacing = tuple(data['textspacing']) # percentage of textsize (width, height)
 
         # resizing
         self._recompute_frame()
@@ -138,7 +139,7 @@ class Console:
                                       frameColor=(0, 0, 0, 0),
                                       text_font=self._font,
                                       pressEffect=False,
-                                      text_fg=(1, 1, 1, 1),
+                                      text_fg = (1, 1, 1, 1),
                                       text_align=TextNode.ALeft,
                                       parent=self._gui)
         self._info = OnscreenText(text='targeting: ' + self._consoles[self._indicator['text']],
@@ -152,19 +153,19 @@ class Console:
         self._update_res()
 
         # head
-        self._ConsoleOutput('Pconsole ' + version, color=Vec4(0.3, 0.3, 1, 1))
-        self._ConsoleOutput(
+        self.ConsoleOutput('Pconsole ' + version, color=Vec4(0.3, 0.3, 1, 1))
+        self.ConsoleOutput(
             'Successfully loaded all components', color=Vec4(0, 1, 0, 1))
-        self._ConsoleOutput(
+        self.ConsoleOutput(
             'Type "help", "credits" or "license" for more information.')
-        self._ConsoleOutput(
+        self.ConsoleOutput(
             "Click the prompt keyword or press f2 to change the targeted console")
 
         # base.buttonThrowers
         self._eventhandler = DirectObject.DirectObject()
         if event == 'f2':
-            self._ConsoleOutput(" ")
-            self._ConsoleOutput(
+            self.ConsoleOutput(" ")
+            self.ConsoleOutput(
                 'failed to configure %s key as toggling event, loading default (f1)' % event, Vec4(0.8, 0.8, 1, 1))
             event = 'f1'  # default if conflict with f2
         self._eventhandler.accept(event, self.__toggle)
@@ -179,8 +180,8 @@ class Console:
 
         self.app = app
         if self.app == None:
-            self._ConsoleOutput(" ")
-            self._ConsoleOutput(
+            self.ConsoleOutput(" ")
+            self.ConsoleOutput(
                 "Warning: 'main' keyword is not available in the python shell, as the 'app' \nargument was not provided")
         if not self._settings["disponstartup"]: self.__toggle()  # initialize as hidden
 
@@ -226,57 +227,76 @@ class Console:
         """
 
         if len(data) == 0: return None
-        # reset scroll
         self._call_back_index = -1
+        # reset scroll
+        self._scrolling_index = 0 
         # save to scrolling buffer
         self._inputlines.append(data)
 
-        # reset console entry
+        # reset console entry 
         self._entry.destroy()
         self.__load_console_entry()
         # 
-        self._ConsoleOutput(" ")
-        self._ConsoleOutput(self._indicator['text']+data)
+        self.ConsoleOutput(" ")
+        self.ConsoleOutput(self._indicator['text'] + data, (1, 1, 1, 1))
 
 
         if self._indicator['text'] == 'pyt> ':
-            py_process(data, self.app, self._ConsoleOutput)
+            py_process(data, self.ConsoleOutput, self.app)
         elif self._indicator['text'] == 'csl> ':
-            csl_process(data, self._ConsoleOutput, self._command_dictionary)
+            csl_process(data, self.ConsoleOutput, self._command_dictionary)
         elif self._indicator['text'] == 'os$> ':
-            cmd_process(data, self._ConsoleOutput)
+            cmd_process(data, self.ConsoleOutput)
         return None
 
-    def _ConsoleOutput(self, output, color: Vec4 = Vec4(1, 1, 1, 1), mode: str = 'add', CMD_type=False, encoding='utf-8'):
+    def ConsoleOutput(self, output : str, color: Vec4 = Vec4(1, 1, 1, 1), mode: str = 'add', cmd_type : bool = False, encoding : str = 'utf-8'):
+        """
+        Display text in the console. The provided output string is not processed.
+        ### Usage
+        Initialize your console correctly in the first place using Create() 
+        >>> my_console.ConsoleOutput("Hello world!", Vec4(1, 0, 0, 0), 'add') # display a red Hello world message 
+        """
         redistribute(self._savedlines, self._maxsize,
                      self._maxlines, self._visible_lines)
 
         keyword = "\n"
         if output == None: return
         elif type(output) is bytes: output = convert(output, self.win_symbols)
-        if CMD_type: sys.__stdout__.write(output)
+        if cmd_type: sys.__stdout__.write(output)
 
-        text = output.split(keyword)
+        split_text = output.split(keyword)
 
+        
         text = [[x[i:i+self._maxsize]
-            for i in range(0, len(x), self._maxsize)] for x in text]
+            for i in range(0, len(x), self._maxsize)] for x in split_text]
+        
+        # temporary
+        text = []
+        for x in split_text:
+            temp = []
+            for i in range(0, len(x), self._maxsize):
+                temp.append(x[i:i+self._maxsize])
+            if len(x) == 0: temp.append('')
+            text.append(temp)
+        
+                
         if mode == 'add':
             for discretized in text:
                 self._savedlines.append((''.join(discretized), color))
+                #if len(discretized) == 0: discretized = [''] # displaying empty lines
                 for i in range(len(discretized)):  # for each line
                     for x in range(self._maxlines-1, 0, -1):
                         self._visible_lines[x].textnode.text = self._visible_lines[x-1].textnode.text
                         self._visible_lines[x].textnode.fg = self._visible_lines[x-1].textnode.fg
-                        self._visible_lines[x].lineIndex = self._visible_lines[x-1].lineIndex
-                        self._visible_lines[x].charInterval = self._visible_lines[x-1].charInterval
+                        self._visible_lines[x].line_index = self._visible_lines[x-1].line_index
+                        self._visible_lines[x].char_interval = self._visible_lines[x-1].char_interval
                     self._visible_lines[0].textnode.text = discretized[i]
                     self._visible_lines[0].textnode.fg = color
-                    self._visible_lines[0].lineIndex = len(
-                        self._savedlines)-1  # save the line number
+                    self._visible_lines[0].line_index = len(self._savedlines) - 1  # save the line number
                     previous = ''
                     # sum up all the previous chars
                     for t in range(i): previous += discretized[t]
-                    self._visible_lines[0].charInterval = [
+                    self._visible_lines[0].char_interval = [
                         len(previous), len(previous)+len(discretized[i])-1]
         elif mode == 'edit':
             # save the line, might not work properly
@@ -286,17 +306,18 @@ class Console:
                 for i in range(n):
                     self._visible_lines[i].textnode.text = discretized[n - i - 1]
                     self._visible_lines[i].textnode.fg = color
-                    self._visible_lines[i].lineIndex = len(
-                        self._savedlines)-1  # charinterval not handled
+                    self._visible_lines[i].line_index = len(
+                        self._savedlines)-1  # char_interval not handled
         return None
 
     def _scroll(self, direction: bool):
         """
         No documentation provided
         """
-        sign = (-1)**int(direction+1)  # -1 or 1 depending on the boolean
-        self._scrolling_index = displace(
-            self._savedlines, self._maxsize, self._maxlines, self._visible_lines, self._scrolling_index, sign)
+        sign = (-self._settings['scrolldelta']) ** int(direction+1)  # -1 or 1 depending on the boolean
+        self._scrolling_index = displace(self._savedlines, self._maxsize, 
+                                         self._maxlines, self._visible_lines, 
+                                         self._scrolling_index, sign)
 
     def _switch_adr(self):
         """
@@ -344,14 +365,14 @@ class Console:
                 if self._call_back_index < len(invertedinput):
                     self._call_back_index += 1
                     self._entry.enterText(invertedinput[self._call_back_index])
-            except: pass
+            except IndexError: pass
         else:
             try:
                 if self._call_back_index >= 0:
                     self._call_back_index -= 1
                     self._entry.enterText(
                         ([''] + invertedinput)[self._call_back_index])
-            except: pass
+            except IndexError: pass
 
     def _recompute_frame(self):
         """
